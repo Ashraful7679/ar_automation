@@ -736,6 +736,7 @@ def set_raw_header(self, row_id):
         return True
 
     def close(self):
+        """Close database connection"""
         self.conn.close()
 
     def get_unique_values(self, column_name):
