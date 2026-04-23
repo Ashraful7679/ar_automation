@@ -39,7 +39,6 @@ if DATABASE_URL:
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'connect_args': {
             'connect_timeout': 10,
-            'options': '-c statement_timeout=30000'
         }
     }
     DB_PATH = DATABASE_URL
