@@ -737,7 +737,7 @@ def set_raw_header(self, row_id):
 
     def close(self):
         self.conn.close()
-        
+
     def get_unique_values(self, column_name):
         """Returns all unique values for a specific column in the raw_data table."""
         if not column_name:
