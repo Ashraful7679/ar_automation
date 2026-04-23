@@ -61,10 +61,9 @@ class NextcareParser(BaseParser):
     def transform(self, raw_data):
         formatted_rows = []
         for idx, row in enumerate(raw_data):
-            # row: rowid, inv, ref, date, name, fob, invoiced, deducted, settled, remark
-            # raw_data from DB includes rowid as first element
-            if len(row) >= 10:
-                inv, ref, date, name, fob, invoiced, deducted, settled, remark = row[1:10]
+            # row: inv, ref, date, name, fob, invoiced, deducted, settled, remark
+            if len(row) >= 9:
+                inv, ref, date, name, fob, invoiced, deducted, settled, remark = row[:9]
             else:
                 inv, ref, date, name, fob, invoiced, deducted, settled, remark = row[-9:]
             

@@ -67,10 +67,10 @@ class PayAdviceParser(BaseParser):
         
         for idx, row in enumerate(raw_data):
             # Extract fields from raw data
-            invoice_number = row[1] if len(row) > 1 else ""  # Skip rowid at index 0
-            invoice_date = row[2] if len(row) > 2 else ""
-            invoice_details = row[3] if len(row) > 3 else ""
-            invoice_amount = row[4] if len(row) > 4 else ""  # BHD already removed
+            invoice_number = row[0] if len(row) > 0 else ""
+            invoice_date = row[1] if len(row) > 1 else ""
+            invoice_details = row[2] if len(row) > 2 else ""
+            invoice_amount = row[3] if len(row) > 3 else ""  # BHD already removed
             
             # BHD was already removed in parse(), but apply regex again as safety measure
             cleaned_amount = re.sub(r'^\s*BHD\s*', '', str(invoice_amount), flags=re.IGNORECASE).strip()

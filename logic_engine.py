@@ -1,5 +1,4 @@
-import psycopg2
-from psycopg2 import pool
+import sqlite3
 import csv
 import openpyxl
 import os
@@ -23,8 +22,8 @@ import sys
 class LogicEngine:
     def __init__(self, db_path=":memory:"):
         self.db_path = db_path
-        self.conn = psycopg2.connect(db_path, connect_timeout=30)
-        self.conn.autocommit = False
+        self.conn = sqlite3.connect(db_path, timeout=30)
+        self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
         self.table_name = "raw_data"
         self.formatted_table_name = "formatted_data"
@@ -42,19 +41,19 @@ class LogicEngine:
 
     def _recover_formatted_headers(self):
         try:
-            self.cursor.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{self.formatted_table_name}'")
+            self.cursor.execute(f"PRAGMA table_info({self.formatted_table_name})")
             cols = self.cursor.fetchall()
             if cols:
-                self.formatted_headers = [c[0] for c in cols]
+                self.formatted_headers = [c[1] for c in cols]
         except Exception:
             pass
 
     def _recover_raw_headers(self):
         try:
-            self.cursor.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = '{self.table_name}'")
+            self.cursor.execute(f"PRAGMA table_info({self.table_name})")
             cols = self.cursor.fetchall()
             if cols:
-                self.headers = [c[0] for c in cols]
+                self.headers = [c[1] for c in cols]
         except Exception:
             pass
 
@@ -90,14 +89,13 @@ class LogicEngine:
         self.headers = self.current_parser.raw_headers
         self._create_table(self.headers)
         if rows:
-            placeholder = ','.join(['%s']*len(self.headers))
+            placeholder = ','.join(['?']*len(self.headers))
             cols = ', '.join([f'"{h}"' for h in self.headers])
             self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
         self.conn.commit()
 
     def _create_formatted_table(self, headers):
         cols = [f'"{h}" TEXT' for h in headers]
-        cols.insert(0, 'id SERIAL PRIMARY KEY')
         self.cursor.execute(f"DROP TABLE IF EXISTS {self.formatted_table_name}")
         self.cursor.execute(f"CREATE TABLE {self.formatted_table_name} ({', '.join(cols)})")
 
@@ -118,7 +116,7 @@ class LogicEngine:
         self._create_formatted_table(self.formatted_headers)
 
         if formatted_rows:
-            placeholder = ','.join(['%s']*len(self.formatted_headers))
+            placeholder = ','.join(['?']*len(self.formatted_headers))
             cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
             self.cursor.executemany(f"INSERT INTO {self.formatted_table_name} ({cols}) VALUES ({placeholder})", formatted_rows)
         self.conn.commit()
@@ -151,12 +149,12 @@ class LogicEngine:
     def get_formatted_preview(self):
         if self.current_parser:
             placeholders = ', '.join([f'"{h}"' for h in self.formatted_headers])
-            self.cursor.execute(f"SELECT id, {placeholders} FROM {self.formatted_table_name}")
+            self.cursor.execute(f"SELECT rowid, {placeholders} FROM {self.formatted_table_name}")
             rows = self.cursor.fetchall()
 
             return {
                 "headers": ["_id"] + self.formatted_headers,
-                "rows": rows
+                "rows": [list(r) for r in rows]
             }
         else:
             return self.get_preview()
@@ -167,8 +165,6 @@ class LogicEngine:
         if getattr(sys, 'frozen', False):
              base_dir = os.path.dirname(sys.executable)
              output_dir = os.path.join(base_dir, 'output')
-        elif os.environ.get('RENDER'):
-             output_dir = '/tmp/output'
         else:
              output_dir = os.path.join(self._get_base_path(), 'static', 'output')
 
@@ -341,7 +337,7 @@ class LogicEngine:
             raise ValueError("Invalid column index")
 
         col_name = self.formatted_headers[col_index]
-        self.cursor.execute(f'UPDATE {self.formatted_table_name} SET "{col_name}" = %s WHERE id = %s', (new_value, row_id))
+        self.cursor.execute(f'UPDATE {self.formatted_table_name} SET "{col_name}" = ? WHERE rowid = ?', (new_value, row_id))
         self.conn.commit()
         return True
 
@@ -364,7 +360,7 @@ class LogicEngine:
             updates_by_col[col_name].append((u['value'], u['row_id']))
 
         for col_name, batch in updates_by_col.items():
-            self.cursor.executemany(f'UPDATE {self.formatted_table_name} SET "{col_name}" = %s WHERE id = %s', batch)
+            self.cursor.executemany(f'UPDATE {self.formatted_table_name} SET "{col_name}" = ? WHERE rowid = ?', batch)
 
         self.conn.commit()
         return True
@@ -378,7 +374,7 @@ class LogicEngine:
 
         self._create_formatted_table(self.formatted_headers)
         if rows:
-            placeholder = ','.join(['%s']*len(self.formatted_headers))
+            placeholder = ','.join(['?']*len(self.formatted_headers))
             cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
             self.cursor.executemany(f"INSERT INTO {self.formatted_table_name} ({cols}) VALUES ({placeholder})", rows)
         self.conn.commit()
@@ -470,7 +466,7 @@ class LogicEngine:
         rows = self._clean_numeric_columns(rows)
 
         if rows:
-            placeholder = ','.join(['%s']*len(self.headers))
+            placeholder = ','.join(['?']*len(self.headers))
             cols = ', '.join([f'"{h}"' for h in self.headers])
             self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
         self.conn.commit()
@@ -546,7 +542,7 @@ class LogicEngine:
                         # Take only first 1000 chars per page to save memory
                         text = text[:1000]
                         self.cursor.execute(
-                            "INSERT INTO raw_data (id, \"Page\", \"Content\") VALUES (DEFAULT, %s, %s)",
+                            f"INSERT INTO {self.table_name} (\"Page\", \"Content\") VALUES (?, ?)",
                             (str(i+1), text)
                         )
                 except Exception:
@@ -572,7 +568,6 @@ class LogicEngine:
 
     def _create_table(self, headers):
         cols = [f'"{h}" TEXT' for h in headers]
-        cols.insert(0, 'id SERIAL PRIMARY KEY')
         try:
             self.cursor.execute(f"DROP TABLE IF EXISTS {self.table_name}")
             self.conn.commit()
@@ -587,7 +582,7 @@ class LogicEngine:
             if not self.headers:
                 self._recover_raw_headers()
 
-            self.cursor.execute(f"SELECT id, * FROM {self.table_name}")
+            self.cursor.execute(f"SELECT rowid, * FROM {self.table_name}")
             rows = self.cursor.fetchall()
 
             rows = [list(r) for r in rows]
@@ -601,8 +596,8 @@ class LogicEngine:
     def delete_raw_rows(self, row_ids):
         if not row_ids: return False
 
-        placeholders = ','.join(['%s']*len(row_ids))
-        self.cursor.execute(f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})", row_ids)
+        placeholders = ','.join(['?']*len(row_ids))
+        self.cursor.execute(f"DELETE FROM {self.table_name} WHERE rowid IN ({placeholders})", row_ids)
         self.conn.commit()
         return True
 
@@ -612,10 +607,10 @@ class LogicEngine:
 
         if self.headers:
             cols_str = ', '.join([f'"{h}"' for h in self.headers])
-            self.cursor.execute(f"SELECT {cols_str} FROM {self.table_name} WHERE id = %s", (row_id,))
+            self.cursor.execute(f"SELECT {cols_str} FROM {self.table_name} WHERE rowid = ?", (row_id,))
             new_header_row = self.cursor.fetchone()
         else:
-            self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE id = %s", (row_id,))
+            self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE rowid = ?", (row_id,))
             res = self.cursor.fetchone()
             if res: new_header_row = res[1:]
             else: new_header_row = None
@@ -623,7 +618,7 @@ class LogicEngine:
         if not new_header_row:
              raise ValueError("Row not found.")
 
-        self.cursor.execute(f"SELECT id, * FROM {self.table_name} WHERE id > %s", (row_id,))
+        self.cursor.execute(f"SELECT rowid, * FROM {self.table_name} WHERE rowid > ?", (row_id,))
         raw_results = self.cursor.fetchall()
 
         remaining_rows = [r[1:] for r in raw_results]
@@ -636,7 +631,7 @@ class LogicEngine:
         self.headers = new_headers
 
         if remaining_rows:
-            placeholder = ','.join(['%s']*len(new_headers))
+            placeholder = ','.join(['?']*len(new_headers))
             cols = ', '.join([f'"{h}"' for h in new_headers])
             self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", remaining_rows)
 
@@ -667,7 +662,7 @@ class LogicEngine:
             if filter_value is None:
                 query = f'DELETE FROM {self.table_name} WHERE "{column_name}" IS NOT NULL'
             else:
-                query = f'DELETE FROM {self.table_name} WHERE "{column_name}" != %s'
+                query = f'DELETE FROM {self.table_name} WHERE "{column_name}" != ?'
             
             self.cursor.execute(query, (filter_value,) if filter_value is not None else ())
             self.conn.commit()

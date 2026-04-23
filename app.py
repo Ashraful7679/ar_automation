@@ -1,29 +1,7 @@
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import os
 import shutil
 import time
-
-# Clean up old temp files on startup
-def cleanup_temp_files():
-    """Remove files older than 3 minutes from temp folders"""
-    temp_dirs = ['/tmp/uploads', '/tmp/output']
-    max_age = 180  # 3 minutes in seconds
-    
-    for temp_dir in temp_dirs:
-        if os.path.exists(temp_dir):
-            now = time.time()
-            for f in os.listdir(temp_dir):
-                filepath = os.path.join(temp_dir, f)
-                try:
-                    if os.path.isfile(filepath):
-                        if os.path.getmtime(filepath) < now - max_age:
-                            os.remove(filepath)
-                            print(f"Cleaned up: {filepath}")
-                except Exception as e:
-                    pass
-
-# Run cleanup on startup
-cleanup_temp_files()
 import pandas as pd
 from logic_engine import LogicEngine
 import traceback
@@ -31,11 +9,8 @@ import sys
 from flask_login import LoginManager, login_required, current_user
 from models import db, User, FileHistory
 from auth_routes import auth_bp
-from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
-
-DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -50,28 +25,10 @@ else:
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')
+OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
 
-if os.environ.get('RENDER') or getattr(sys, 'frozen', False):
-    UPLOAD_FOLDER = '/tmp/uploads'
-    OUTPUT_FOLDER = '/tmp/output'
-    OUTPUT_FOLDER_STATIC = os.path.join(OUTPUT_FOLDER)
-else:
-    OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
-
-from sqlalchemy.pool import NullPool
-
-if DATABASE_URL:
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'poolclass': NullPool,
-        'connect_args': {
-            'connect_timeout': 10,
-        }
-    }
-    DB_PATH = DATABASE_URL
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'ar_system.db') + '?timeout=30'
-    DB_PATH = os.path.join(BASE_DIR, 'session_v2.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'ar_system.db')
+DB_PATH = os.path.join(BASE_DIR, 'session_v2.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -546,8 +503,8 @@ def admin_panel():
     
 @app.route('/download_file/<path:filename>')
 def download_file(filename):
-    download_dir = '/tmp/output' if os.environ.get('RENDER') else OUTPUT_FOLDER
-    return send_from_directory(download_dir, filename, as_attachment=True)
+    return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

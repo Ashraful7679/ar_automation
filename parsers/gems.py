@@ -365,16 +365,15 @@ class GemsParser(BaseParser):
         sl_no_counter = 1
 
         for row in raw_data:
-            # Row has rowid at index 0 from SQLite
-            # Columns: rowid, date, inv, pat_id, name, mem_no, cols...
-            date = row[1]
-            inv = row[2].upper()
-            pat_id = row[3]
-            name = row[4]
-            mem_no = row[5]
-            net_payment = row[12]
-            amt_to_adjust = row[12]
-            gems_remark = row[14]
+            # Columns: date, inv, pat_id, name, mem_no, cols...
+            date = row[0]
+            inv = row[1].upper()
+            pat_id = row[2]
+            name = row[3]
+            mem_no = row[4]
+            net_payment = row[11]
+            amt_to_adjust = row[11]
+            gems_remark = row[13]
 
             if not inv:
                 continue
