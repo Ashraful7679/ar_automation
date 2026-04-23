@@ -231,12 +231,15 @@ class LogicEngine:
             for r in formatted_rows:
                 ws.append(r)
 
-            for row in ws.iter_rows(min_row=5, max_row=ws.max_row, min_col=6, max_col=7):
+            # Convert Invoice Balance and Amt To Adjust to numbers
+            for row in ws.iter_rows(min_row=5, max_row=ws.max_row):
                 for cell in row:
-                    if cell.value:
+                    if cell.column_letter in ['F', 'G'] and cell.value:
                         try:
-                            cell.value = float(str(cell.value).replace(',', ''))
-                            cell.number_format = numbers.FORMAT_NUMBER_00
+                            val_str = str(cell.value).replace(',', '').strip()
+                            if val_str.replace('.', '').replace('-', '').isdigit() or val_str.replace('.', '').replace('-', '').isdigit():
+                                cell.value = float(val_str)
+                                cell.number_format = numbers.FORMAT_NUMBER_00
                         except:
                             pass
 
