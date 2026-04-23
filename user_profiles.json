@@ -1,0 +1,562 @@
+{
+    "_TEMPLATES_": {
+        "mapping": {
+            "AMERICAN LIFE INSURANCE": {
+                "1": "Invoice No.",
+                "2": "Inv. Date",
+                "4": "Patient Name",
+                "5": "Paid",
+                "6": "Paid",
+                "8": "Remarks -1",
+                "9": "Remarks -2",
+                "10": "Remarks -3"
+            },
+            "ARABIAN": {
+                "1": "Inv. No",
+                "2": "Inv. Date",
+                "3": "HR/File No.",
+                "4": "Insured Name",
+                "5": "Payable"
+            },
+            "Arabian Shield": {
+                "1": "Inv. No",
+                "2": "Inv. Date",
+                "3": "Insured No",
+                "4": "Insured Name",
+                "6": "Tot Payable"
+            },
+            "Arabian2": {
+                "1": "Inv. No",
+                "2": "Inv. Date",
+                "3": "HR/File No.",
+                "4": "Insured Name",
+                "5": "Payable",
+                "6": "Tot Payable"
+            },
+            "BUPA": {
+                "1": "INVOICE_NO",
+                "6": "AMOUNT_PAID",
+                "8": "PRIMARY_REASON"
+            },
+            "BUPAFinal": {
+                "1": "INVOICE_NO",
+                "2": "TREATMENT_TO_DATE",
+                "3": "BUPA_INTL_CLAIM_NO",
+                "4": "MEMBER_NAME",
+                "5": "AMOUNT_CLAIMED",
+                "6": "AMOUNT_PAID",
+                "8": "PRIMARY_REASON",
+                "9": "SECONDARY_REASON"
+            },
+            "BUPAINTL": {
+                "1": "INVOICE_NO",
+                "2": "TREATMENT_FROM_DATE",
+                "6": "AMOUNT_PAID",
+                "8": "PRIMARY_REASON"
+            },
+            "Bupa001": {
+                "1": "INVOICE_NO",
+                "2": "TREATMENT_TO_DATE",
+                "6": "AMOUNT_PAID",
+                "8": "PRIMARY_REASON",
+                "9": "SECONDARY_REASON"
+            },
+            "GBM01": {
+                "1": "INVOICENUMBER",
+                "3": "BATCH",
+                "4": "ADHERENTNAME",
+                "5": "PROVIDERNET DETAILS",
+                "8": "REMARK",
+                "9": "DIFFERENCEREASON"
+            },
+            "GEMS3": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "3": "Pat. File No.",
+                "4": "Member Name",
+                "6": "Net Payment",
+                "8": "Bank charge to Client"
+            },
+            "GLOB": {
+                "1": "INVOICENUMBER",
+                "2": "PERFORMINGDATE",
+                "8": "REMARK"
+            },
+            "Globemed": {
+                "1": "INVOICENUMBER",
+                "2": "",
+                "6": "PROVIDERNET DETAILS",
+                "8": "REMARK"
+            },
+            "Globemed002": {
+                "1": "INVOICENUMBER",
+                "6": "PROVIDERNET DETAILS",
+                "8": "REMARK"
+            },
+            "H360 PDF": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "3": "Member No.",
+                "4": "Member No.",
+                "6": "Net Payment",
+                "8": "Bank charge to Client"
+            },
+            "MEDNET": {
+                "1": "Provider Invoice Nbr",
+                "2": "Invoice Date",
+                "4": "Insured Member",
+                "6": "Paid Amount",
+                "8": "Invoice Notes"
+            },
+            "MSH": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "payment",
+                "8": "Message"
+            },
+            "MSH-3": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "MSH001": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "MSH01": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "5": "payment",
+                "8": "Message"
+            },
+            "MSH02": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient ID",
+                "5": "Deductible",
+                "8": "Message"
+            },
+            "MSH03": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient ID",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "MSH1": {
+                "1": "Date",
+                "2": "Invoice No",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Payment",
+                "8": "Message"
+            },
+            "MSH2": {
+                "1": "Date",
+                "2": "Invoice No",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Original Charge",
+                "8": "Message"
+            },
+            "MSH3": {
+                "1": "Date",
+                "2": "Invoice No",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "MSH5": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient ID",
+                "5": "payment",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "Mednet001": {
+                "1": "Provider Invoice Nbr",
+                "2": "Report Date",
+                "6": "Paid Amount",
+                "8": "Invoice Notes"
+            },
+            "MetlifeAlico001": {
+                "1": "Invoice No.",
+                "2": "Cheq. Date",
+                "4": "Patient Name",
+                "6": "Paid",
+                "8": "Remarks -1",
+                "9": "Remarks -2",
+                "10": "Remarks -3"
+            },
+            "NAS": {
+                "1": "InvoiceNo",
+                "2": "TxnDate",
+                "4": "BeneficiaryName",
+                "6": "AmountApproved",
+                "8": "AdjustmentReason"
+            },
+            "Nextcare001": {
+                "1": "Invoice #",
+                "2": "Date",
+                "6": "Settled Amount",
+                "8": "Remark"
+            },
+            "SAICO": {
+                "1": "INVOICE NO.",
+                "2": "TREATMENT DATE",
+                "3": "MEMBER NO.",
+                "4": "MEMBER NAME",
+                "5": "INELIGIBLE AMOUNT - LOCAL",
+                "6": "NET PAYMENT AMOUNT - LOCAL",
+                "8": "PRIMARY DENIAL",
+                "9": "SECONDARY DENIALS",
+                "10": "DENIAL NOTES"
+            },
+            "SOS": {
+                "1": "Document Reference Number",
+                "3": "Case Number",
+                "6": "Document Amount"
+            },
+            "TAWUNIYA": {
+                "1": "INVOICE_NO",
+                "2": "LOSS_DATE",
+                "3": "PATIENT_FILE_NO",
+                "6": "NET_PAID",
+                "8": "NON_PAY_REASON_DESC",
+                "9": "NON_PAY_REASON_DESC",
+                "10": "NON_PAY_REASON_DESC"
+            },
+            "gems04": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "6": "Net Payment",
+                "8": "Bank charge to Client"
+            },
+            "glob": {
+                "1": "INVOICENUMBER",
+                "2": "PERFORMINGDATE",
+                "3": "STAFFNUMBER",
+                "4": "ADHERENTNAME",
+                "5": "TOTALAPPROVED",
+                "6": "TOTALRECOVERY",
+                "8": "REMARK"
+            },
+            "msh06": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "payment",
+                "8": "Message"
+            },
+            "msh07": {
+                "1": "Invoice No",
+                "2": "Date",
+                "3": "Patient ID",
+                "4": "Patient Name",
+                "6": "Deductible",
+                "8": "Message"
+            },
+            "HEALTH 360": {
+                "2": "CPRNo"
+            }
+        },
+        "rules": {
+            "AMERICAN LIFE INSURANCE": [
+                {
+                    "c": "100",
+                    "p": "A",
+                    "s": "ALICO"
+                },
+                {
+                    "c": "101",
+                    "p": "B",
+                    "s": "ALICO"
+                },
+                {
+                    "c": "102",
+                    "p": "C",
+                    "s": "ALICO"
+                }
+            ],
+            "ARABIAN": [
+                {
+                    "c": "ARABI100",
+                    "p": "A",
+                    "s": "ARAB100"
+                },
+                {
+                    "c": "ARABI101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "ARABI102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Cigna001": [
+                {
+                    "c": "NEXTC100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "NEXTC101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "NEXTC102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "GLOBMED": [
+                {
+                    "c": "GIX100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GIX101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GIX102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "GULF": [
+                {
+                    "c": "G1",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "G2",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "G3",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "MSH02": [
+                {
+                    "c": "MSHDU100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "MSHDU101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "MSHDU102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "MSH04": [
+                {
+                    "c": "MSHDU100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "MSHDU101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "MSHDU102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "NAS": [
+                {
+                    "c": "100",
+                    "p": "NAS",
+                    "s": "NASIN"
+                },
+                {
+                    "c": "101",
+                    "p": "NAS",
+                    "s": "NASIN"
+                },
+                {
+                    "c": "102",
+                    "p": "NAS",
+                    "s": "NASIN"
+                }
+            ],
+            "NEXT 03": [
+                {
+                    "c": "100",
+                    "p": "a",
+                    "s": "NEXTC"
+                },
+                {
+                    "c": "101",
+                    "p": "B",
+                    "s": "NEXTC"
+                },
+                {
+                    "c": "102",
+                    "p": "C",
+                    "s": "NEXTC"
+                }
+            ],
+            "NEXTCARE 01": [
+                {
+                    "c": "100",
+                    "p": "a",
+                    "s": "NEXTC"
+                },
+                {
+                    "c": "101",
+                    "p": "B",
+                    "s": "NEXTC"
+                },
+                {
+                    "c": "102",
+                    "p": "C",
+                    "s": "NEXTC"
+                }
+            ],
+            "Nextcare001": [
+                {
+                    "c": "NEXTC100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "NEXTC101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "NEXTC102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "TAWUNIYACODE": [
+                {
+                    "c": "TICIN100",
+                    "p": "A",
+                    "s": ""
+                }
+            ],
+            "TAWUNIYACOde": [
+                {
+                    "c": "TICIN100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "TICIN101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "TICIN102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "gems01": [
+                {
+                    "c": "GUNIO100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "gems1": [
+                {
+                    "c": "GUNIO100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "gems2": [
+                {
+                    "c": "GUNIO100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "NAS INTERNATIONAL": [
+                {
+                    "p": "NAS",
+                    "s": "NASIN",
+                    "c": "100"
+                },
+                {
+                    "p": "NAS",
+                    "s": "NASIN",
+                    "c": "101"
+                },
+                {
+                    "p": "NAS",
+                    "s": "NASIN",
+                    "c": "102"
+                }
+            ]
+        }
+    }
+}

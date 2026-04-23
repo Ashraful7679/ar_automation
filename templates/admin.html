@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AR Automation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Re-using style.css for consistency -->
+    <style>
+        .admin-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .template-table {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .template-table th {
+            background: #111827;
+            padding: 10px;
+        }
+
+        .template-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .btn-edit {
+            background: #3B82F6;
+        }
+
+        .btn-delete {
+            background: #EF4444;
+        }
+
+        #editor-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #1F2937;
+            padding: 20px;
+            border-radius: 8px;
+            width: 600px;
+            max-width: 90%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="brand">
+                <h1>AR Admin</h1>
+            </div>
+            <div class="nav-menu">
+                <button class="nav-item" onclick="window.location.href='/'">← Back to Dashboard</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="header">
+                <h2>Template Administration</h2>
+                <p>Manage Mapping and Rules configuration templates.</p>
+            </div>
+
+            <!-- Mapping Templates -->
+            <div class="section-card">
+                <h3>Mapping Templates</h3>
+                <div id="mapping-list">Loading...</div>
+            </div>
+
+            <!-- Rules Templates -->
+            <div class="section-card">
+                <h3>Rules Templates</h3>
+                <div id="rules-list">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editor-modal">
+        <div class="modal-content">
+            <h3>Edit Template</h3>
+            <input type="hidden" id="edit-type">
+            <input type="hidden" id="edit-name">
+            <textarea id="edit-json"
+                style="width:100%; height:300px; background:#111827; color:#F9FAFB; border:1px solid #374151; font-family:monospace; margin: 10px 0; padding:10px;"></textarea>
+            <div style="text-align:right;">
+                <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+                <button onclick="saveChanges()" class="btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchAllTemplates() {
+            console.log("Fetching templates...");
+            await loadSection('mapping');
+            await loadSection('rules');
+        }
+
+        async function loadSection(type) {
+            const container = document.getElementById(`${type}-list`);
+            container.innerHTML = '<div style="color:#9CA3AF;">Loading ' + type + '...</div>';
+
+            try {
+                console.log(`Requesting ${type} templates...`);
+                const res = await fetch('/api/get_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: '_TEMPLATES_', section: type })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP Error: ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log(`Received ${type} data:`, data);
+
+                if (!data.success) {
+                    container.innerHTML = `<div style="color:red;">API Error: ${data.error || 'Unknown'}</div>`;
+                    return;
+                }
+
+                if (!data.settings || Object.keys(data.settings).length === 0) {
+                    container.innerHTML = '<p style="color:#6B7280; font-style:italic;">No saved templates found for ' + type + '.</p>';
+                    return;
+                }
+
+                const keys = Object.keys(data.settings);
+                // Clear loading message
+                container.innerHTML = `<div style="margin-bottom:10px; color:#10B981; font-size:0.8rem;">Found ${keys.length} templates.</div>`;
+
+                let html = '<table class="template-table"><thead><tr><th style="text-align:left;">Name</th><th style="text-align:right;">Actions</th></tr></thead><tbody>';
+
+                keys.forEach(name => {
+                    const safeName = name.replace(/'/g, "\\'");
+                    const displayName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+                    html += `
+                    <tr>
+                        <td>${displayName}</td>
+                        <td style="text-align:right;">
+                            <button class="action-btn btn-edit" onclick="editTemplate('${type}', '${safeName}')">Edit JSON</button>
+                            <button class="action-btn btn-delete" onclick="deleteTemplate('${type}', '${safeName}')">Delete</button>
+                        </td>
+                    </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+
+                // Append table safely
+                const range = document.createRange();
+                const frag = range.createContextualFragment(html);
+                container.appendChild(frag);
+
+            } catch (e) {
+                container.innerHTML = `<div style="color:#EF4444; background: #372020; padding:10px; border-radius:4px;">
+                    <strong>Error loading ${type}:</strong><br>
+                    ${e.message}
+                </div>`;
+                console.error(e);
+            }
+        }
+
+        async function deleteTemplate(type, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+            try {
+                const res = await fetch('/api/delete_template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: '_TEMPLATES_', section: type, name: name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadSection(type); // Refresh
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (e) {
+                alert("Request Failed");
+            }
+        }
+
+        // --- Editing ---
+        async function editTemplate(type, name) {
+            try {
+                // Fetch latest config to be sure
+                const res = await fetch('/api/get_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: '_TEMPLATES_', section: type })
+                });
+                const data = await res.json();
+                const config = data.settings[name];
+
+                document.getElementById('edit-type').value = type;
+                document.getElementById('edit-name').value = name;
+                document.getElementById('edit-json').value = JSON.stringify(config, null, 4);
+
+                document.getElementById('editor-modal').style.display = 'flex';
+            } catch (e) {
+                alert("Could not load template data.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editor-modal').style.display = 'none';
+        }
+
+        async function saveChanges() {
+            const type = document.getElementById('edit-type').value;
+            const name = document.getElementById('edit-name').value;
+            const jsonStr = document.getElementById('edit-json').value;
+            let newConfig;
+
+            try {
+                newConfig = JSON.parse(jsonStr);
+            } catch (e) {
+                alert("Invalid JSON format.");
+                return;
+            }
+
+            try {
+                // 1. Get all templates
+                const res = await fetch('/api/get_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: '_TEMPLATES_', section: type })
+                });
+                const data = await res.json();
+                let currentTemplates = data.settings || {};
+
+                // 2. Update specific template
+                currentTemplates[name] = newConfig;
+
+                // 3. Save ALL back
+                const saveRes = await fetch('/api/save_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile: '_TEMPLATES_',
+                        section: type,
+                        config: currentTemplates
+                    })
+                });
+                const saveData = await saveRes.json();
+
+                if (saveData.success) {
+                    closeModal();
+                    loadSection(type);
+                } else {
+                    alert("Save Failed: " + saveData.error);
+                }
+            } catch (e) {
+                alert("Error saving.");
+            }
+        }
+
+        // Init
+        fetchAllTemplates();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Automation Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>AR Engine</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="switchTab('load')">Load Data</button>
+                <button class="nav-item" onclick="switchTab('map')" style="display:none;">Map Columns</button>
+                <button class="nav-item" onclick="switchTab('rules')" style="display:none;">Define Rules</button>
+                <button class="nav-item" onclick="switchTab('run')" style="display:none;">Run Process</button>
+            </nav>
+
+            <div class="user-panel" style="margin-top: auto; padding: 20px; border-top: 1px solid #374151;">
+                <p style="color: #9CA3AF; font-size: 0.9rem; margin-bottom: 10px;">User: <span style="color:white">{{
+                        user.username }}</span></p>
+                {% if user.is_admin %}
+                <a href="{{ url_for('auth.admin_dashboard') }}" class="nav-item"
+                    style="display:block; text-align:center; background:#064E3B; color:#6EE7B7; margin-bottom:10px; padding:8px; border-radius:4px; text-decoration:none;">Admin
+                    Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}"
+                    style="display:block; text-align:center; color:#EF4444; text-decoration:none; font-size:0.9rem;">Logout</a>
+            </div>
+
+            <div class="status-panel" style="margin-top: 20px;">
+                <h3>Status</h3>
+                <p id="app-status">Ready</p>
+            </div>
+        </aside>
+
+        <main class="content-area">
+            <!-- LOAD TAB -->
+            <section id="tab-load" class="tab-content active">
+                <div class="header">
+                    <h2>Import Source File</h2>
+                    <p>Select the payer format/profile to ensure correct parsing.</p>
+                </div>
+
+                <div
+                    style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; background: #1F2937; padding: 15px; border-radius: 12px; border: 1px solid #374151;">
+
+                    <div class="upload-zone" id="drop-zone"
+                        style="flex: 1.5; padding: 10px; border: 1px dashed #4B5563; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #111827;">
+                        <input type="file" id="file-input" hidden>
+                        <button class="btn-primary" onclick="document.getElementById('file-input').click()"
+                            style="padding: 6px 12px; font-size: 0.8rem; background: #4F46E5;">Browse File</button>
+                        <div id="file-display" style="display: flex; flex-direction: column;">
+                            <span id="file-name-text" style="font-size: 0.8rem; color: #9CA3AF; font-weight: 500;">No
+                                file selected</span>
+                            <span style="font-size: 0.7rem; color: #6B7280;">or drop file here</span>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1;">
+                        <label style="display:block; margin-bottom:8px; color:#9CA3AF; font-size: 0.85rem;">Format /
+                            Payer(PDF ONLY)</label>
+                        <select id="format-select" class="input-select"
+                            style="width:100%; padding:8px; background:#111827; color:white; border:1px solid #374151; border-radius:6px; font-size: 0.9rem;">
+                            <option value="default">Default / Auto-Detect</option>
+                            <!-- Existing Profiles (Keep) -->
+                            <option value="ARABIAN_SHIELD">ARABIAN SHIELD INSURANCE</option>
+                            <option value="AXA_PPP">AXA PPP INTERNATIONAL</option>
+                            <option value="GEMS">GEMS (Medgulf)</option>
+                            <option value="HEALIX">HEALIX INTERNATIONAL</option>
+                            <option value="SOS">INTERNATIONAL SOS</option>
+                            <option value="MSH">MSH INTERNATIONAL</option>
+                            <option value="NEXT_CARE">NEXT CARE</option>
+                            <option value="PAYADVICE">PAYADVICE</option>
+                            <option value="WORLDWIDE">WORLDWIDE INSURANCE</option>
+
+                        </select>
+                    </div>
+
+                    <!-- Sheet Selector (for Excel files only) -->
+                    <div id="sheet-selector-container" class="hidden" style="flex: 1;">
+                        <label style="display:block; margin-bottom:8px; color:#9CA3AF; font-size: 0.85rem;">Select
+                            Sheet:(EXCEL ONLY)</label>
+                        <select id="sheet-select" class="input-select"
+                            style="width:100%; padding:8px; background:#111827; color:white; border:1px solid #374151; border-radius:6px; font-size: 0.9rem;">
+                        </select>
+                    </div>
+                </div>
+
+                <div id="preview-container" class="preview-section hidden">
+                    <div
+                        style="display: flex; gap: 20px; align-items: flex-start; min-width: 1200px; position: relative;">
+                        <!-- Left Column: Tables (Fixed 75%) -->
+                        <div id="main-table-area"
+                            style="width: 75%; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; transition: width 0.3s ease;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <h2 style="font-size: 1.1rem; color: #9CA3AF; margin: 0;">Data Previews</h2>
+                                <button onclick="toggleLeftColumn()" class="btn-secondary"
+                                    style="padding: 4px 8px; font-size: 0.75rem; background: #374151;">
+                                    Toggle Tables
+                                </button>
+                            </div>
+
+                            <!-- 1. Input Data -->
+                            <div id="raw-section" class="collapsible-section">
+                                <div class="collapsible-header" onclick="toggleSection('raw-section')">
+                                    <h3>Input Data</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content">
+                                    <!-- Cleaning Toolbar -->
+                                    <div id="raw-toolbar"
+                                        style="padding: 8px; background: #1F2937; display: flex; gap: 10px; border-bottom: 1px solid #374151;">
+                                        <button onclick="setRawHeader()"
+                                            style="background:#3B82F6; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                                            Set Selected as Header
+                                        </button>
+                                        <button onclick="deleteRawRows()"
+                                            style="background:#EF4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                                            Delete Selected Rows
+                                        </button>
+                                        <button onclick="setAsLastRow()"
+                                            style="background:#F59E0B; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                                            Set Selected as Last Row
+                                        </button>
+                                        
+                                        <!-- Filtering Section -->
+                                        <div style="display: flex; gap: 8px; align-items: center; border-left: 1px solid #374151; padding-left: 10px; margin-left: 5px;">
+                                            <select id="filter-column" onchange="updateFilterValues()"
+                                                style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 4px; font-size: 0.75rem; min-width: 120px;">
+                                                <option value="">Select Column...</option>
+                                            </select>
+                                            <select id="filter-value"
+                                                style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 4px; font-size: 0.75rem; min-width: 120px;">
+                                                <option value="">Select Value...</option>
+                                            </select>
+                                            <button onclick="applyRawFilter()"
+                                                style="background:#10B981; color:white; border:none; padding:4px 12px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight: 500;">
+                                                Filter
+                                            </button>
+                                        </div>
+                                        
+                                        <span style="flex:1;"></span>
+                                        <small style="color:#9CA3AF; align-self: center;">Select rows using checkboxes
+                                            below</small>
+                                    </div>
+                                    <div class="table-wrapper">
+                                        <table id="raw-preview-table"></table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Converted Data (Mapped) -->
+                            <div id="formatted-section" class="collapsible-section">
+                                <div class="collapsible-header" onclick="toggleSection('formatted-section')">
+                                    <h3>Converted Data (Mapped)</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content">
+                                    <div class="table-wrapper">
+                                        <table id="formatted-preview-table"></table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Result Data (Rules Applied) -->
+                            <div id="result-section" class="collapsible-section">
+                                <div class="collapsible-header" onclick="toggleSection('result-section')">
+                                    <h3>Result Data (Rules Applied)</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content">
+                                    <div class="table-wrapper">
+                                        <table id="result-preview-table"></table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Right Column: Sidebar (Fixed 25%) -->
+                        <div id="sidebar-area"
+                            style="width: 25%; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; position: sticky; top: 0; max-height: 100%; overflow-y: auto; padding-right: 5px; transition: width 0.3s ease;">
+
+                            <!-- 1. Mapping Section -->
+                            <div id="side-mapping-section" style="height: 100%; margin-bottom: 15px;"
+                                class="collapsible-section sidebar-item open">
+                                <div class="collapsible-header" onclick="toggleSidebarSection('side-mapping-section')">
+                                    <h3 style="font-size: 0.85rem; text-transform: uppercase;">1. Column Mapping</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content" style="padding: 10px; background: #111827;">
+                                    <!-- Template Controls -->
+                                    <div
+                                        style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #374151;">
+                                        <label style="color:#9CA3AF; font-size:0.75rem;">Load Template</label>
+                                        <div style="display:flex; gap:5px; margin-bottom:5px;">
+                                            <select id="mapping-template-select" class="input-select"
+                                                style="flex:1; padding:5px; background:#1F2937; color:white; border:1px solid #374151; border-radius:4px; font-size:0.8rem;">
+                                                <option value="">Select Template...</option>
+                                            </select>
+                                            <button onclick="loadTemplate('mapping')"
+                                                style="background:#3B82F6; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Load</button>
+                                            <button onclick="deleteSelectedTemplate('mapping')"
+                                                style="background:#EF4444; color:white; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-size:0.8rem;" title="Delete Selected Template">✕</button>
+                                        </div>
+                                    </div>
+                                    <div id="mapping-sidebar" class="mapping-sidebar">
+                                        <!-- Rendered dynamically in JS -->
+                                        <p style="color: #6B7280; font-size: 0.8rem;">Load a file to see mapping
+                                            options.</p>
+                                    </div>
+                                    <label style="color:#9CA3AF; font-size:0.75rem;">Save Current as
+                                        Template</label>
+                                    <div style="display:flex; gap:5px;">
+                                        <input type="text" id="mapping-template-name" placeholder="Template Name"
+                                            style="flex:1; padding:5px; background:#1F2937; color:white; border:1px solid #374151; border-radius:4px; font-size:0.8rem;">
+                                        <button onclick="saveTemplate('mapping')"
+                                            style="background:#10B981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Save</button>
+                                    </div>
+                                    <div class="mapping-actions" style="margin-top: 10px;">
+                                        <button onclick="confirmMapping()" class="btn-primary"
+                                            style="background:#8B5CF6; width: 100%; font-size: 0.8rem; padding: 8px;">
+                                            Confirm Mapping
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Processing Rules -->
+                            <div id="side-rules-section" class="collapsible-section sidebar-item">
+                                <div class="collapsible-header" onclick="toggleSidebarSection('side-rules-section')">
+                                    <h3 style="font-size: 0.85rem; text-transform: uppercase;">2. Logic & Rules</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content" style="padding: 10px; background: #111827;">
+                                    <!-- Template Controls -->
+                                    <div
+                                        style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #374151;">
+                                        <label style="color:#9CA3AF; font-size:0.75rem;">Load Template</label>
+                                        <div style="display:flex; gap:5px; margin-bottom:5px;">
+                                            <select id="rules-template-select" class="input-select"
+                                                style="flex:1; padding:5px; background:#1F2937; color:white; border:1px solid #374151; border-radius:4px; font-size:0.8rem;">
+                                                <option value="">Select Template...</option>
+                                            </select>
+                                            <button onclick="loadTemplate('rules')"
+                                                style="background:#3B82F6; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Load</button>
+                                            <button onclick="deleteSelectedTemplate('rules')"
+                                                style="background:#EF4444; color:white; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-size:0.8rem;" title="Delete Selected Template">✕</button>
+                                        </div>
+
+
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <h4
+                                            style="color: #6B7280; font-size: 0.75rem; margin-bottom: 8px; text-transform: uppercase;">
+                                            Prefix Tags</h4>
+                                        <div id="rules-container" style="margin-bottom: 10px;">
+                                            <!-- Dynamic Prefix Rows -->
+                                        </div>
+
+                                        <button onclick="addRuleRow()"
+                                            style="width: 100%; background:#374151; color:white; border:none; padding:8px; border-radius:4px; font-size:0.8rem; cursor:pointer;">
+                                            + Add Code Rule
+                                        </button>
+                                    </div>
+                                    <label style="color:#9CA3AF; font-size:0.75rem;">Save Current as
+                                        Template</label>
+                                    <div style="display:flex; gap:5px;">
+                                        <input type="text" id="rules-template-name" placeholder="Template Name"
+                                            style="flex:1; padding:5px; background:#1F2937; color:white; border:1px solid #374151; border-radius:4px; font-size:0.8rem;">
+                                        <button onclick="saveTemplate('rules')"
+                                            style="background:#10B981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Save</button>
+                                    </div>
+                                    <div style="margin-top: 10px; border-top: 1px solid #374151; padding-top: 10px;">
+                                        <button onclick="applyPipeline('rules')"
+                                            style="width: 100%; background:#2563EB; color:white; border:none; padding:8px; border-radius:4px; font-size:0.8rem; cursor:pointer; font-weight:bold;">
+                                            Apply Rules & Preview
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Split & Group Section -->
+                            <div id="side-split-section" class="collapsible-section sidebar-item">
+                                <div class="collapsible-header" onclick="toggleSidebarSection('side-split-section')">
+                                    <h3 style="font-size: 0.85rem; text-transform: uppercase;">3. Split & Group</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content" style="padding: 10px; background: #111827;">
+                                    <div style="margin-bottom: 10px;">
+                                        <h4
+                                            style="color: #6B7280; font-size: 0.75rem; margin-bottom: 8px; text-transform: uppercase;">
+                                            Consolidation</h4>
+                                        <label class="toggle"
+                                            style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #D1D5DB; margin-bottom: 12px;">
+                                            <input type="checkbox" id="rule-consolidate" checked>
+                                            Consolidate Duplicates (by Inv No)
+                                        </label>
+
+                                        <p style="font-size: 0.7rem; color: #9CA3AF; margin-bottom: 15px;">Split files
+                                            by CustomerCode automatically</p>
+
+
+
+                                        <button onclick="applyPipeline('full')"
+                                            style="width: 100%; background:#3B82F6; color:white; border:none; padding:10px; border-radius:4px; font-size:0.85rem; font-weight:600; cursor:pointer;">
+                                            Apply Split & Group
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Export Section -->
+                            <div id="side-export-section" class="collapsible-section sidebar-item">
+                                <div class="collapsible-header" onclick="toggleSidebarSection('side-export-section')">
+                                    <h3 style="font-size: 0.85rem; text-transform: uppercase;">4. Export</h3>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                                <div class="collapsible-content" style="padding: 10px; background: #111827;">
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <div style="display: flex; gap: 8px;">
+                                            <select id="export-format"
+                                                style="flex: 1; padding: 8px; background: #1F2937; border: 1px solid #374151; color: white; border-radius: 4px; font-size: 0.8rem;">
+                                                <option value="xlsx">XLSX</option>
+                                                <option value="xlsm">XLSM</option>
+                                                <option value="xls">XLS</option>
+                                                <option value="csv">CSV</option>
+                                                <option value="pdf">PDF</option>
+                                            </select>
+                                            <button onclick="prepareFile()" id="btn-prepare"
+                                                style="flex: 2; padding: 8px; background:#10B981; color:white; border:none; border-radius:4px; font-weight:bold; font-size: 0.8rem; cursor:pointer;">
+                                                Prepare
+                                            </button>
+                                        </div>
+
+                                        <!-- Container for Download Buttons -->
+                                        <div id="download-list-container"
+                                            style="display: flex; flex-direction: column; gap: 5px;">
+                                            Download Result
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+    </div>
+
+    </section>
+
+    <!-- MAP TAB -->
+    <section id="tab-map" class="tab-content">
+        <div class="header">
+            <h2>Map Columns</h2>
+            <p>Match your file columns to standard fields</p>
+        </div>
+        <div class="mapping-grid" id="mapping-container">
+            <!-- Standard Field -> Dropdown Source -->
+        </div>
+        <div class="actions">
+            <button class="btn-secondary">Save Profile</button>
+        </div>
+    </section>
+
+    <!-- RULES TAB -->
+    <section id="tab-rules" class="tab-content">
+        <div class="header">
+            <h2>Logic Engine</h2>
+        </div>
+        <div class="card">
+            <h3>Consolidation</h3>
+            <label class="toggle">
+                <input type="checkbox" id="rule-consolidate">
+                <span class="slider"></span>
+                Enable Consolidate Duplicate Rows
+            </label>
+        </div>
+        <div class="card">
+            <h3>Prefix Rules</h3>
+            <textarea placeholder="A -> PAYER1100..."></textarea>
+        </div>
+    </section>
+
+    <!-- RUN TAB -->
+    <section id="tab-run" class="tab-content">
+        <div class="header">
+            <h2>Execute Process</h2>
+        </div>
+        <div class="console" id="console-log">
+            <p>> System Ready...</p>
+        </div>
+        <button class="btn-primary" onclick="runProcess()">Run Process</button>
+    </section>
+    </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+
+</html>

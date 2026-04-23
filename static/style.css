@@ -1,0 +1,642 @@
+:root {
+    --bg-color: #111827;
+    --sidebar-bg: #1F2937;
+    --card-bg: #262f3e;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --accent: #6366F1;
+    --accent-hover: #4F46E5;
+    --border: #374151;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+}
+
+.brand h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 40px;
+    color: var(--accent);
+}
+
+.nav-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.nav-item {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    text-align: left;
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    background-color: var(--accent);
+    color: white;
+}
+
+.status-panel {
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.status-panel h3 {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+/* Content */
+.content-area {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.header {
+    margin-bottom: 30px;
+}
+
+.header h2 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.header p {
+    color: var(--text-secondary);
+}
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    transition: border-color 0.2s;
+    background: var(--card-bg);
+}
+
+.upload-zone:hover {
+    border-color: var(--accent);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Table */
+.preview-section {
+    margin-top: 20px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 500px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+th {
+    background-color: var(--sidebar-bg);
+    text-align: left;
+    padding: 12px;
+    position: sticky;
+    top: 0;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+tr:hover td {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Footer Totals */
+tfoot tr {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: #1F2937 !important;
+    border-top: 2px solid var(--border);
+}
+
+.total-cell {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.95rem;
+}
+
+/* --- Collapsible Table Sections --- */
+.collapsible-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.collapsible-header {
+    padding: 12px 16px;
+    background: var(--sidebar-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.collapsible-header .toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.3s;
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transition: max-height 0.4s ease-out, visibility 0.4s;
+    background: inherit;
+}
+
+.collapsible-section.open .collapsible-content {
+    max-height: 80vh;
+    /* Increased for totals */
+    overflow-y: auto;
+    visibility: visible;
+    padding: 10px;
+}
+
+.collapsible-section.open .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.mapping-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 20px;
+}
+
+.mapping-field {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+
+.mapping-field label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.mapping-select {
+    width: 100%;
+    padding: 8px;
+    background: #111827;
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.mapping-actions {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Specific Section Colors */
+#raw-section.open {
+    border-color: #6B7280;
+}
+
+#raw-section .collapsible-header h3 {
+    color: #9CA3AF;
+}
+
+#formatted-section.open {
+    border-color: #10B981;
+}
+
+#formatted-section .collapsible-header h3 {
+    color: #10B981;
+}
+
+#result-section.open {
+    border-color: #3B82F6;
+}
+
+#result-section .collapsible-header h3 {
+    color: #3B82F6;
+}
+
+/* --- Sidebar Accordion Enhancements --- */
+.sidebar-item {
+    border: 1px solid var(--border);
+    background: #111827;
+    border-radius: 8px;
+    margin-bottom: 10px !important;
+}
+
+.sidebar-item.open {
+    border-color: var(--accent);
+}
+
+.sidebar-item .collapsible-header {
+    background: #1F2937;
+    padding: 8px 12px;
+}
+
+.sidebar-item .collapsible-header h3 {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.sidebar-item.open .collapsible-header h3 {
+    color: white;
+}
+
+/* Fix for Sidebar Scrolling: Allow sections to expand fully so parent scrolls */
+.sidebar-item.open .collapsible-content {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+
+/* --- Fixed Table Column Widths --- */
+/* Targetting Converted and Result Tables specifically */
+#formatted-preview-table,
+#result-preview-table {
+    table-layout: fixed;
+    /* Force fixed layout */
+    width: 100%;
+}
+
+/* Define widths for the 9-column schema (plus serial) */
+/* Column Indices: 0:Sl, 1:Inv, 2:Date, 3:PID, 4:PName, 5:Balance, 6:Amount, 7:CustCode, 8:Status */
+#formatted-preview-table th:nth-child(1),
+#result-preview-table th:nth-child(1) {
+    width: 50px;
+}
+
+/* Sl. No */
+#formatted-preview-table th:nth-child(2),
+#result-preview-table th:nth-child(2) {
+    width: 120px;
+}
+
+/* Inv No */
+#formatted-preview-table th:nth-child(3),
+#result-preview-table th:nth-child(3) {
+    width: 100px;
+}
+
+/* Date */
+#formatted-preview-table th:nth-child(4),
+#result-preview-table th:nth-child(4) {
+    width: 120px;
+}
+
+/* Patient ID */
+#formatted-preview-table th:nth-child(5),
+#result-preview-table th:nth-child(5) {
+    width: 200px;
+}
+
+/* Patient Name */
+#formatted-preview-table th:nth-child(6),
+#result-preview-table th:nth-child(6) {
+    width: 100px;
+}
+
+/* Balance */
+#formatted-preview-table th:nth-child(7),
+#result-preview-table th:nth-child(7) {
+    width: 100px;
+}
+
+/* Amount */
+#formatted-preview-table th:nth-child(8),
+#result-preview-table th:nth-child(8) {
+    width: 120px;
+}
+
+/* CustomerCode */
+#formatted-preview-table th:nth-child(9),
+#result-preview-table th:nth-child(9) {
+    width: 100px;
+}
+
+/* Status */
+#formatted-preview-table td,
+#result-preview-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Content area for collapsed left column */
+.preview-section.left-collapsed #main-table-area {
+    width: 0 !important;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    flex: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preview-section.left-collapsed #sidebar-area {
+    width: 100% !important;
+    flex: 1;
+    background: inherit;
+}
+
+.collapsible-section.open .collapsible-content {
+    max-height: 80vh;
+    /* Increased for totals */
+    overflow-y: auto;
+    visibility: visible;
+    padding: 10px;
+}
+
+.collapsible-section.open .toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* Sidebar Mapping Styles */
+.mapping-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mapping-field {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+
+.mapping-field label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.mapping-select {
+    width: 100%;
+    padding: 8px;
+    background: #111827;
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.mapping-actions {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Specific Section Colors */
+#raw-section.open {
+    border-color: #6B7280;
+}
+
+#raw-section .collapsible-header h3 {
+    color: #9CA3AF;
+}
+
+#formatted-section.open {
+    border-color: #10B981;
+}
+
+#formatted-section .collapsible-header h3 {
+    color: #10B981;
+}
+
+#result-section.open {
+    border-color: #3B82F6;
+}
+
+#result-section .collapsible-header h3 {
+    color: #3B82F6;
+}
+
+/* --- Sidebar Accordion Enhancements --- */
+.sidebar-item {
+    border: 1px solid var(--border);
+    background: #111827;
+    border-radius: 8px;
+    margin-bottom: 10px !important;
+}
+
+.sidebar-item.open {
+    border-color: var(--accent);
+}
+
+.sidebar-item .collapsible-header {
+    background: #1F2937;
+    padding: 8px 12px;
+}
+
+.sidebar-item .collapsible-header h3 {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.sidebar-item.open .collapsible-header h3 {
+    color: white;
+}
+
+/* Fix for Sidebar Scrolling: Allow sections to expand fully so parent scrolls */
+.sidebar-item.open .collapsible-content {
+    max-height: none;
+    overflow: visible;
+}
+
+
+/* --- Fixed Table Column Widths --- */
+/* Targetting Converted and Result Tables specifically */
+#formatted-preview-table,
+#result-preview-table {
+    table-layout: fixed;
+    /* Force fixed layout */
+    width: 100%;
+}
+
+/* Define widths for the 9-column schema (plus serial) */
+/* Column Indices: 0:Sl, 1:Inv, 2:Date, 3:PID, 4:PName, 5:Balance, 6:Amount, 7:CustCode, 8:Status */
+#formatted-preview-table th:nth-child(1),
+#result-preview-table th:nth-child(1) {
+    width: 50px;
+}
+
+/* Sl. No */
+#formatted-preview-table th:nth-child(2),
+#result-preview-table th:nth-child(2) {
+    width: 120px;
+}
+
+/* Inv No */
+#formatted-preview-table th:nth-child(3),
+#result-preview-table th:nth-child(3) {
+    width: 100px;
+}
+
+/* Date */
+#formatted-preview-table th:nth-child(4),
+#result-preview-table th:nth-child(4) {
+    width: 120px;
+}
+
+/* Patient ID */
+#formatted-preview-table th:nth-child(5),
+#result-preview-table th:nth-child(5) {
+    width: 200px;
+}
+
+/* Patient Name */
+#formatted-preview-table th:nth-child(6),
+#result-preview-table th:nth-child(6) {
+    width: 100px;
+}
+
+/* Balance */
+#formatted-preview-table th:nth-child(7),
+#result-preview-table th:nth-child(7) {
+    width: 100px;
+}
+
+/* Amount */
+#formatted-preview-table th:nth-child(8),
+#result-preview-table th:nth-child(8) {
+    width: 120px;
+}
+
+/* CustomerCode */
+#formatted-preview-table th:nth-child(9),
+#result-preview-table th:nth-child(9) {
+    width: 100px;
+}
+
+/* Status */
+#formatted-preview-table td,
+#result-preview-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Content area for collapsed left column */
+.preview-section.left-collapsed #main-table-area {
+    width: 0 !important;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    flex: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preview-section.left-collapsed #sidebar-area {
+    width: 100% !important;
+    flex: 1;
+}
+
+.preview-section.left-collapsed {
+    background: rgba(17, 24, 39, 0.5);
+}
+
+/* Drag and Drop Hover State */
+.upload-zone.dragover {
+    border-color: var(--accent);
+    background-color: rgba(99, 102, 241, 0.1);
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+}
