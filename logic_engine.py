@@ -526,7 +526,36 @@ class LogicEngine:
         self._load_excel(path, sheet_name)
 
     def _load_pdf(self, path):
-        raise ValueError("PDF upload is not supported on this version. Please convert your PDF to Excel/CSV format.")
+        self.headers = ["Page", "Content"]
+        self._create_table(self.headers)
+
+        try:
+            if os.path.getsize(path) > 5 * 1024 * 1024:  # 5MB limit
+                raise ValueError("PDF file too large (max 5MB)")
+            
+            reader = PdfReader(path)
+            
+            # Process max 50 pages to avoid memory issues
+            max_pages = min(len(reader.pages), 50)
+            
+            for i in range(max_pages):
+                try:
+                    page = reader.pages[i]
+                    text = page.extract_text()
+                    if text:
+                        # Take only first 1000 chars per page to save memory
+                        text = text[:1000]
+                        self.cursor.execute(
+                            "INSERT INTO raw_data (id, \"Page\", \"Content\") VALUES (DEFAULT, %s, %s)",
+                            (str(i+1), text)
+                        )
+                except Exception:
+                    continue
+            
+            self.conn.commit()
+        except Exception as e:
+            print(f"PDF load error: {e}")
+            self.headers = []
 
     def _deduplicate_headers(self, headers):
         seen = {}
