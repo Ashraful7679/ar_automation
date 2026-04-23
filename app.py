@@ -8,6 +8,7 @@ import sys
 from flask_login import LoginManager, login_required, current_user
 from models import db, User, FileHistory
 from auth_routes import auth_bp
+from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
 
@@ -34,9 +35,12 @@ if os.environ.get('RENDER') or getattr(sys, 'frozen', False):
 else:
     OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
 
+from sqlalchemy.pool import NullPool
+
 if DATABASE_URL:
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'poolclass': NullPool,
         'connect_args': {
             'connect_timeout': 10,
         }
