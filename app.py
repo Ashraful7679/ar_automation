@@ -24,7 +24,12 @@ else:
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')
 
-OUTPUT_FOLDER = os.path.join(RESOURCE_DIR, 'static', 'output')
+if os.environ.get('RENDER') or getattr(sys, 'frozen', False):
+    UPLOAD_FOLDER = '/tmp/uploads'
+    OUTPUT_FOLDER = '/tmp/output'
+    OUTPUT_FOLDER_STATIC = os.path.join(OUTPUT_FOLDER)
+else:
+    OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
 
 if DATABASE_URL:
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
@@ -499,13 +504,7 @@ def admin_panel():
     
 @app.route('/download_file/<path:filename>')
 def download_file(filename):
-    if getattr(sys, 'frozen', False):
-        base_dir = os.path.dirname(sys.executable)
-        output_dir = os.path.join(base_dir, 'output')
-    else:
-        output_dir = os.path.join(BASE_DIR, 'static', 'output')
-        
-    return send_from_directory(output_dir, filename, as_attachment=True)
+    return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
