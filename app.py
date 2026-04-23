@@ -35,10 +35,12 @@ else:
     OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
 
 if DATABASE_URL:
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL + '&pool=disable&keepalives=1'
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
+        'connect_args': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'
+        }
     }
     DB_PATH = DATABASE_URL
 else:
