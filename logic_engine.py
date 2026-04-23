@@ -110,7 +110,7 @@ class LogicEngine:
         if 'id' in col_names:
             col_names.remove('id')
 
-        self.cursor.execute(f"SELECT {', '.join(col_names)} FROM {self.table_name}")
+        self.cursor.execute(f"SELECT {', '.join([f'\"{c}\"' for c in col_names])} FROM {self.table_name}")
         raw_rows = self.cursor.fetchall()
 
         self.formatted_headers, formatted_rows = self.current_parser.transform(raw_rows)
