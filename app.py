@@ -1,6 +1,29 @@
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import os
 import shutil
+import time
+
+# Clean up old temp files on startup
+def cleanup_temp_files():
+    """Remove files older than 3 minutes from temp folders"""
+    temp_dirs = ['/tmp/uploads', '/tmp/output']
+    max_age = 180  # 3 minutes in seconds
+    
+    for temp_dir in temp_dirs:
+        if os.path.exists(temp_dir):
+            now = time.time()
+            for f in os.listdir(temp_dir):
+                filepath = os.path.join(temp_dir, f)
+                try:
+                    if os.path.isfile(filepath):
+                        if os.path.getmtime(filepath) < now - max_age:
+                            os.remove(filepath)
+                            print(f"Cleaned up: {filepath}")
+                except Exception as e:
+                    pass
+
+# Run cleanup on startup
+cleanup_temp_files()
 import pandas as pd
 from logic_engine import LogicEngine
 import traceback
