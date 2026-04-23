@@ -204,7 +204,11 @@ def upload():
         # which prevents WinError 32
         
         profile = request.form.get('profile', 'default')
-        sheet_name = request.form.get('sheet', None)  # Get selected sheet
+        sheet_name = request.form.get('sheet', None)
+        
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == '.pdf' and os.path.getsize(filepath) == 0:
+            return jsonify({"error": "Invalid PDF file"}), 400
         
         engine = LogicEngine(DB_PATH)
         engine.load_file(filepath, profile_name=profile, sheet_name=sheet_name)
