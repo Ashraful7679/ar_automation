@@ -43,6 +43,9 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-prod'
+app.config['SECRET_KEY'] = SECRET_KEY
+
 db.init_app(app)
 
 login_manager = LoginManager()
