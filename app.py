@@ -515,7 +515,8 @@ def admin_panel():
     
 @app.route('/download_file/<path:filename>')
 def download_file(filename):
-    return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
+    download_dir = '/tmp/output' if os.environ.get('RENDER') else OUTPUT_FOLDER
+    return send_from_directory(download_dir, filename, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -167,6 +167,8 @@ class LogicEngine:
         if getattr(sys, 'frozen', False):
              base_dir = os.path.dirname(sys.executable)
              output_dir = os.path.join(base_dir, 'output')
+        elif os.environ.get('RENDER'):
+             output_dir = '/tmp/output'
         else:
              output_dir = os.path.join(self._get_base_path(), 'static', 'output')
 
@@ -521,21 +523,29 @@ class LogicEngine:
         self._load_excel(path, sheet_name)
 
     def _load_pdf(self, path):
-        reader = PdfReader(path)
-        self.headers = ["Page", "Content"]
-        self._create_table(self.headers)
+        try:
+            reader = PdfReader(path)
+            self.headers = ["Page", "Content"]
+            self._create_table(self.headers)
 
-        rows = []
-        for i, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text:
-                for line in text.split('\n'):
-                    rows.append((i+1, line))
+            rows = []
+            for i, page in enumerate(reader.pages):
+                text = page.extract_text()
+                if text:
+                    for line in text.split('\n'):
+                        line = line.strip()
+                        if line:
+                            rows.append((str(i+1), line))
 
-        cols = ', '.join([f'"{h}"' for h in self.headers])
-        placeholder = ','.join(['%s']*len(self.headers))
-        self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
-        self.conn.commit()
+            if rows:
+                cols = ', '.join([f'"{h}"' for h in self.headers])
+                placeholder = ','.join(['%s']*len(self.headers))
+                self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
+                self.conn.commit()
+        except Exception as e:
+            print(f"PDF load error: {e}")
+            self.headers = []
+            raise
 
     def _deduplicate_headers(self, headers):
         seen = {}
