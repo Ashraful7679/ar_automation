@@ -5,6 +5,9 @@ import pandas as pd
 from logic_engine import LogicEngine
 import traceback
 import sys
+from flask_login import LoginManager, login_required, current_user
+from models import db, User, FileHistory
+from auth_routes import auth_bp
 
 app = Flask(__name__)
 
