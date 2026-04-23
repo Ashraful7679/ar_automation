@@ -10,3 +10,4 @@ pypdf
 fpdf
 werkzeug
 python-dotenv
+pdfplumber
