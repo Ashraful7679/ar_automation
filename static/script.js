@@ -3,6 +3,47 @@ let originalFormattedData = null; // Store for revert
 let rawDataStore = null; // Store raw data for mapping
 let pendingUpdates = {}; // Track changes: "rowId-colIdx": {row_id, col_index, value}
 
+function showLoader(show, text = "Processing Data...") {
+    const loader = document.getElementById('loader-overlay');
+    const loaderText = document.getElementById('loader-text');
+    if (!loader) return;
+
+    if (show) {
+        if (loaderText) loaderText.innerText = text;
+        loader.style.display = 'flex';
+    } else {
+        loader.style.display = 'none';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `notification ${type}`;
+
+    let icon = '🔔';
+    if (type === 'success') icon = '✅';
+    if (type === 'error') icon = '❌';
+
+    toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>${icon}</span>
+            <span>${message}</span>
+        </div>
+        <span onclick="this.parentElement.remove()" style="cursor: pointer; font-size: 1.2rem; line-height: 1;">&times;</span>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
+}
+
 // Fixed Schema per user request
 const FIXED_SCHEMA = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name",
     "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark 1", "Remark 2", "Remark 3"];
@@ -94,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
             if (uploadedFile) {
-                handleFileSelect({ target: { files: [uploadedFile] } });
+                handleFileSelect({ target: { files: [uploadedFile] } }, false);
             }
         });
     }
@@ -147,7 +188,7 @@ function handleDrop(e) {
     const files = dt.files;
 
     if (files.length > 0) {
-        handleFileSelect({ target: { files: files } });
+        handleFileSelect({ target: { files: files } }, true);
     }
 }
 
@@ -174,7 +215,7 @@ function switchTab(tabName) {
 let uploadedFile = null;
 let currentSheets = [];
 
-document.getElementById('file-input').addEventListener('change', handleFileSelect);
+document.getElementById('file-input').addEventListener('change', (e) => handleFileSelect(e, true));
 document.getElementById('sheet-select').addEventListener('change', loadSelectedSheet);
 
 // Event Listener moved to consolidated block for format-select (Line 60+)
@@ -214,8 +255,40 @@ function resetAppState() {
     preparedFilename = null;
     preparedFiles = []; // For multi-file
 
-    // Reset Split & Group Selections
-    // Note: split-by-col dropdown has been removed, now hardcoded to CustomerCode (index 7)
+    // Reset Selects & Inputs to Defaults
+    const formatSelect = document.getElementById('format-select');
+    if (formatSelect) formatSelect.value = 'default';
+
+    const sheetSelect = document.getElementById('sheet-select');
+    if (sheetSelect) sheetSelect.innerHTML = '';
+
+    const mappingTemplateSelect = document.getElementById('mapping-template-select');
+    if (mappingTemplateSelect) mappingTemplateSelect.value = '';
+
+    const rulesTemplateSelect = document.getElementById('rules-template-select');
+    if (rulesTemplateSelect) rulesTemplateSelect.value = '';
+
+    const exportFormat = document.getElementById('export-format');
+    if (exportFormat) exportFormat.value = 'xls';
+
+    const rulesContainer = document.getElementById('rules-container');
+    if (rulesContainer) rulesContainer.innerHTML = '';
+
+    const fileNameText = document.getElementById('file-name-text');
+    if (fileNameText) fileNameText.innerText = 'No file selected';
+
+    // Reset Template Names
+    const mappingTemplateName = document.getElementById('mapping-template-name');
+    if (mappingTemplateName) mappingTemplateName.value = '';
+
+    const rulesTemplateName = document.getElementById('rules-template-name');
+    if (rulesTemplateName) rulesTemplateName.value = '';
+
+    // Reset Cleaning Toolbar
+    ['combine-inv-col', 'combine-rem1-col', 'combine-rem2-col', 'combine-rem3-col', 'filter-column', 'filter-value'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
 
     const consolidate = document.getElementById('rule-consolidate');
     if (consolidate) consolidate.checked = true; // Default to CHECKED per user request
@@ -227,191 +300,196 @@ function resetAppState() {
 
 function applyPipeline(stage = 'full', shouldSave = false) {
     if (!mappedData) {
-        updateStatus("Please confirm mapping first.");
+        showNotification("Please confirm mapping first.", "error");
         return;
     }
 
-    updateStatus("Running Pipeline...");
+    showLoader(true, "Applying Pipeline Rules...");
 
-    // 1. Start with Mapped Data
-    let pipelineRows = JSON.parse(JSON.stringify(mappedData.rows)); // Deep Copy
+    try {
+        // 1. Start with Mapped Data
+        let pipelineRows = JSON.parse(JSON.stringify(mappedData.rows)); // Deep Copy
 
-    // Clean invoice numbers - remove /suffix, -1, -2, etc
-    const invIndex = 1;
-    pipelineRows.forEach(row => {
-        if (row[invIndex]) {
-            row[invIndex] = cleanInvoiceNumber(row[invIndex]);
-        }
-    });
-
-    // 2. Consolidate? (Only if stage is 'full' OR standard check if we assume logic separation means explicit action)
-    // Actually, user wants separate functionality. 
-    // If stage === 'rules', skip consolidation? Yes.
-
-    if (stage === 'full' && document.getElementById('rule-consolidate').checked) {
-        // Consolidate by Inv No (Index 1). 
-        const selectedIndices = [1];
-        pipelineRows = consolidateRows(pipelineRows, selectedIndices);
-    }
-
-    // 3. Apply Prefix Rules (Always apply if rules exist)
-    const rules = [];
-    document.querySelectorAll('#rules-container > div').forEach(div => {
-        const prefix = div.querySelector('.rule-prefix').value.trim();
-        const suffix = div.querySelector('.rule-suffix').value.trim();
-        const code = div.querySelector('.rule-code').value.trim();
-        if (prefix || suffix) {
-            rules.push({ prefix, suffix, code });
-        }
-    });
-
-    if (rules.length > 0) {
+        // Clean invoice numbers - remove /suffix, -1, -2, etc
         const invIndex = 1;
-        const custIndex = 7;
-
         pipelineRows.forEach(row => {
-            const invNo = (row[invIndex] || "").toString().toLowerCase();
-            let rowMatch = false;
-            let newValue = "";
+            if (row[invIndex]) {
+                row[invIndex] = cleanInvoiceNumber(row[invIndex]);
+            }
+        });
 
-            for (const rule of rules) {
-                const p = rule.prefix.toLowerCase();
-                const s = rule.suffix.toLowerCase();
-                let match = true;
-                if (p && !invNo.startsWith(p)) match = false;
-                if (match && s && !invNo.endsWith(s)) match = false;
+        // 2. Consolidate? (Only if stage is 'full' OR standard check if we assume logic separation means explicit action)
+        if (stage === 'full' && document.getElementById('rule-consolidate').checked) {
+            const selectedIndices = [1];
+            pipelineRows = consolidateRows(pipelineRows, selectedIndices);
+        }
 
-                if (match && (p || s)) {
-                    newValue = rule.code;
-                    rowMatch = true;
+        // 3. Apply Prefix Rules
+        const rules = [];
+        document.querySelectorAll('#rules-container > div').forEach(div => {
+            const prefix = div.querySelector('.rule-prefix').value.trim();
+            const suffix = div.querySelector('.rule-suffix').value.trim();
+            const code = div.querySelector('.rule-code').value.trim();
+            if (prefix || suffix) {
+                rules.push({ prefix, suffix, code });
+            }
+        });
+
+        if (rules.length > 0) {
+            const invIndex = 1;
+            const custIndex = 7;
+
+            pipelineRows.forEach(row => {
+                const invNo = (row[invIndex] || "").toString().toLowerCase();
+                let rowMatch = false;
+                let newValue = "";
+
+                for (const rule of rules) {
+                    const p = rule.prefix.toLowerCase();
+                    const s = rule.suffix.toLowerCase();
+                    let match = true;
+                    if (p && !invNo.startsWith(p)) match = false;
+                    if (match && s && !invNo.endsWith(s)) match = false;
+
+                    if (match && (p || s)) {
+                        newValue = rule.code;
+                        rowMatch = true;
+                    }
+                }
+
+                if (rowMatch) {
+                    row[custIndex] = newValue;
+                }
+            });
+        }
+
+        // 3.5 Auto-populate CustomerCode
+        const formatProfile = document.getElementById('format-select').value;
+        const baseCode = FORMAT_CUSTOMER_CODES[formatProfile];
+        if (baseCode) {
+            const invIndex = 1;
+            const custIndex = 7;
+
+            pipelineRows.forEach(row => {
+                const invNo = (row[invIndex] || '').toString().trim();
+                const firstChar = invNo.charAt(0).toUpperCase();
+
+                let suffix = '100';
+                if (firstChar === 'B') suffix = '101';
+                else if (firstChar === 'C') suffix = '102';
+
+                row[custIndex] = baseCode + suffix;
+            });
+        }
+
+        // 3.6 Filter Empty Rows
+        pipelineRows = pipelineRows.filter(r => {
+            const inv = (r[1] || "").toString().trim().toLowerCase();
+            return inv !== "" && inv !== "none" && inv !== "total" && inv !== "null";
+        });
+
+        // Store 11-column version
+        resultData11 = {
+            headers: FIXED_SCHEMA,
+            rows: JSON.parse(JSON.stringify(pipelineRows))
+        };
+
+        // 3.7 Transform to 9 columns
+        const newRows = [];
+        const newRows11 = [];
+        pipelineRows.map(row => {
+            const newRow = row.slice(0, 8);
+            
+            let remarks = [];
+            for (let i = 8; i <= 10; i++) {
+                const val = (row[i] || "").toString().trim();
+                const lower = val.toLowerCase();
+                if (val && lower !== "none" && lower !== "null" && lower !== "undefined" && lower !== "nan") {
+                    remarks.push(val);
                 }
             }
-
-            if (rowMatch) {
-                row[custIndex] = newValue;
-            }
-        });
-    }
-
-    // 3.5 Auto-populate CustomerCode based on format profile and invoice prefix
-    const formatProfile = document.getElementById('format-select').value;
-    const FORMAT_CUSTOMER_CODES = {
-        'ARABIAN_SHIELD': 'ARABI', 'AXA_PPP': 'AXAPP', 'GEMS': 'GUNIO',
-        'HEALIX': 'HEALI', 'SOS': 'SOSIN', 'MSH': 'MSHDU',
-        'ALLIANZ': 'ALLIA', 'ACIG': 'ACIGC', 'AL_ETIHAD': 'ALETI',
-        'BUPA': 'BUPAI', 'CIGNA': 'CIGNA', 'GLOBMED': 'ARIGI',
-        'GIG_KSA': 'AXAKS', 'GIG_GULF': 'AXAIN', 'HEALTH360_OP': 'HEALT',
-        'HEALTH360_EN_IP': 'HLENI', 'HEALTH360_IP': 'HLGNI', 'HEALTH360_EN_OP': 'HLTEN',
-        'MEDNET': 'MEDNE', 'NAS': 'NASIN', 'NEURON': 'NEURO',
-        'NEXTCARE': 'NEXTC', 'NOW_HEALTH': 'NHISD', 'QATAR_INS': 'QICIN',
-        'SAICO': 'SAICO', 'TAWUNIYA': 'TICIN', 'WAPMED': 'WAPME'
-    };
-
-    const baseCode = FORMAT_CUSTOMER_CODES[formatProfile];
-    if (baseCode) {
-        const invIndex = 1; // Inv No column
-        const custIndex = 7; // CustomerCode column
-
-        pipelineRows.forEach(row => {
-            const invNo = (row[invIndex] || '').toString().trim();
-            const firstChar = invNo.charAt(0).toUpperCase();
-
-            // Determine suffix: A→100, B→101, C→102, default→100
-            let suffix = '100';
-            if (firstChar === 'B') suffix = '101';
-            else if (firstChar === 'C') suffix = '102';
-
-            row[custIndex] = baseCode + suffix;
-        });
-    }
-
-    // 3.6 Filter Empty Rows
-    pipelineRows = pipelineRows.filter(r => r[1] && r[1].toString().trim() !== "");
-
-    // Store 11-column version (with rules applied) for export
-    resultData11 = {
-        headers: FIXED_SCHEMA,
-        rows: JSON.parse(JSON.stringify(pipelineRows))
-    };
-
-    // 3.7 Transform to 9 columns for Result Table UI (Merge Remarks)
-    const newRows = [];
-    const newRows11 = [];
-    pipelineRows.map(row => {
-        const newRow = row.slice(0, 8); // Sl. No to CustomerCode
-        const r1 = (row[8] || "").toString().trim();
-        const r2 = (row[9] || "").toString().trim();
-        const r3 = (row[10] || "").toString().trim();
-        
-        let remarks = [];
-        if (r1 && r1.toLowerCase() !== "none") remarks.push(r1);
-        if (r2 && r2.toLowerCase() !== "none") remarks.push(r2);
-        if (r3 && r3.toLowerCase() !== "none") remarks.push(r3);
-        
-        newRow[8] = remarks.join(', ');
-        newRows.push(newRow);
-        
-        // 11-column data for backend
-        let newRow11 = [...row];
-        newRow11[8] = newRow[8]; 
-        newRows11.push(newRow11);
-    });
-
-    resultData = {
-        headers: RESULT_SCHEMA,
-        rows: newRows
-    };
-    
-    resultData11.rows = newRows11;
-
-    // Render to RESULT TABLE (Strictly 9 columns)
-    renderTable('result-preview-table', RESULT_SCHEMA, newRows, false, []);
-
-    // Auto-Open Split Section
-    toggleSidebarSection('side-split-section');
-
-    // 4. Split Logic (Only if stage is 'full')
-    // HARDCODED to split by CustomerCode (index 7) per user request
-    splitGroups = null; // Default null
-    if (stage === 'full') {
-        const splitColIndex = 7; // CustomerCode column (hardcoded)
-        const groups = {};
-        pipelineRows.forEach(row => {
-            // Skip rows with no invoice number (column 1)
-            if (!row[1] || !row[1].toString().trim()) return;
             
-            const key = (row[splitColIndex] || "Uncategorized").toString().trim();
-            if (!groups[key]) groups[key] = [];
-            groups[key].push([...row]);
+            newRow[8] = remarks.join(' | ');
+            newRows.push(newRow);
+            
+            let newRow11 = [...row];
+            newRow11[8] = newRow[8]; 
+            newRows11.push(newRow11);
         });
-        Object.values(groups).forEach((grp, gIdx) => {
-            grp.forEach((r, i) => r[0] = i + 1);
-        });
-        splitGroups = groups;
-    }
 
-    // Validate Totals
-    checkTotalMismatch('formatted-preview-table', 'result-preview-table', 'Apply Rules');
+        resultData = {
+            headers: RESULT_SCHEMA,
+            rows: newRows
+        };
+        
+        resultData11.rows = newRows11;
 
-    if (shouldSave) {
-        saveFullData(pipelineRows);
-    } else {
-        updateStatus("Rules Applied. Check Result Data below.");
-        toggleSection('result-section', true);
+        // Render to RESULT TABLE
+        renderTable('result-preview-table', RESULT_SCHEMA, newRows, false, []);
+        showNotification("Pipeline applied successfully!", "success");
+        // Auto-Open Split Section
+        toggleSidebarSection('side-split-section');
 
-        // Only expand export/actions if full stage
+        splitGroups = null; // Default null
         if (stage === 'full') {
-            toggleSidebarSection('side-export-section', true);
+            const splitColIndex = 7; // CustomerCode column (hardcoded)
+            const groups = {};
+            pipelineRows.forEach(row => {
+                // Skip rows with no invoice number (column 1)
+                if (!row[1] || !row[1].toString().trim()) return;
+                
+                const key = (row[splitColIndex] || "Uncategorized").toString().trim();
+                if (!groups[key]) groups[key] = [];
+                groups[key].push([...row]);
+            });
+            Object.values(groups).forEach((grp, gIdx) => {
+                grp.forEach((r, i) => r[0] = i + 1);
+            });
+            splitGroups = groups;
         }
-        // If 'rules', stay in place (or maybe result section is enough)
+
+        // Validate Totals
+        checkTotalMismatch('formatted-preview-table', 'result-preview-table', 'Apply Rules');
+
+        if (shouldSave) {
+            saveFullData(pipelineRows);
+        } else {
+            updateStatus("Rules Applied. Check Result Data below.");
+            toggleSection('result-section', true);
+
+            // Only expand export/actions if full stage
+            if (stage === 'full') {
+                toggleSidebarSection('side-export-section', true);
+            }
+            // If 'rules', stay in place (or maybe result section is enough)
+        }
+    } catch (e) {
+        console.error("Pipeline Error:", e);
+        showNotification("An error occurred during pipeline processing: " + e.message, "error");
+    } finally {
+        showLoader(false);
     }
 }
 
-async function handleFileSelect(e) {
+async function handleFileSelect(e, isNewFile = true) {
     const file = e.target.files[0];
     if (!file) return;
 
-    resetAppState();
+    if (isNewFile) {
+        resetAppState();
+    } else {
+        // Just clear tables and mapping state but keep format-select and rules
+        rawDataStore = null;
+        mappedData = null;
+        originalFormattedData = null;
+        pendingUpdates = {};
+        
+        ['raw-preview-table', 'formatted-preview-table', 'result-preview-table'].forEach(id => {
+            const t = document.getElementById(id);
+            if (t) t.innerHTML = '';
+        });
+    }
+    
     uploadedFile = file;
 
     // Reset UI visibility
@@ -484,7 +562,7 @@ async function uploadFile(file, sheetName) {
         formData.append('sheet', sheetName);
     }
 
-    updateStatus("Uploading...");
+    showLoader(true, "Loading File Content...");
 
     try {
         const response = await fetch('/api/upload', {
@@ -546,11 +624,13 @@ async function uploadFile(file, sheetName) {
             }
         } else {
             console.error("Server Error:", text);
-            updateStatus("Error: " + response.status + " " + response.statusText);
+            showNotification("Server Error: " + response.status, "error");
         }
     } catch (error) {
         console.error(error);
-        updateStatus("Upload Failed: " + error.message);
+        showNotification("Upload Failed: " + error.message, "error");
+    } finally {
+        showLoader(false);
     }
 }
 
@@ -559,7 +639,7 @@ async function uploadFile(file, sheetName) {
 async function setRawHeader() {
     const checked = document.querySelectorAll('#raw-preview-table .row-checkbox:checked');
     if (checked.length !== 1) {
-        alert("Please select exactly one row to set as header.");
+        showNotification("Please select exactly one row to set as header.", "error");
         return;
     }
     const rowId = checked[0].value;
@@ -576,7 +656,7 @@ async function setRawHeader() {
             updateStatus("Header updated. Reloading View...");
             await reloadRawData();
         } else {
-            alert("Error: " + data.error);
+            showNotification("Error: " + data.error, "error");
             updateStatus("Set Header Failed.");
         }
     } catch (e) { console.error(e); updateStatus("Header Set Error"); }
@@ -585,7 +665,7 @@ async function setRawHeader() {
 async function deleteRawRows() {
     const checked = document.querySelectorAll('#raw-preview-table .row-checkbox:checked');
     if (checked.length === 0) {
-        alert("Please select rows to delete.");
+        showNotification("Please select rows to delete.", "error");
         return;
     }
     const rowIds = Array.from(checked).map(c => c.value);
@@ -602,7 +682,7 @@ async function deleteRawRows() {
             updateStatus("Rows deleted. Reloading View...");
             await reloadRawData();
         } else {
-            alert("Error: " + data.error);
+            showNotification("Error: " + data.error, "error");
             updateStatus("Delete Failed.");
         }
     } catch (e) { console.error(e); updateStatus("Delete Error"); }
@@ -611,19 +691,19 @@ async function deleteRawRows() {
 async function setAsLastRow() {
     const checked = document.querySelectorAll('#raw-preview-table .row-checkbox:checked');
     if (checked.length !== 1) {
-        alert("Please select exactly one row to set as the last row.");
+        showNotification("Please select exactly one row to set as the last row.", "error");
         return;
     }
     const rowId = parseInt(checked[0].value);
     
     if (!rawDataStore || !rawDataStore.rows) {
-        alert("No data loaded.");
+        showNotification("No data loaded.", "error");
         return;
     }
     
     const lastRowId = rawDataStore.rows.length;
     if (rowId >= lastRowId) {
-        alert("Selected row is already the last row or beyond.");
+        showNotification("Selected row is already the last row or beyond.", "error");
         return;
     }
     
@@ -648,7 +728,7 @@ async function setAsLastRow() {
             updateStatus("Rows deleted. Reloading View...");
             await reloadRawData();
         } else {
-            alert("Error: " + data.error);
+            showNotification("Error: " + data.error, "error");
             updateStatus("Delete Failed.");
         }
     } catch (e) { console.error(e); updateStatus("Delete Error"); }
@@ -795,7 +875,7 @@ async function applyRawFilter() {
     const val = document.getElementById('filter-value').value;
     
     if (!col || !val) {
-        alert("Please select both a column and a value to filter.");
+        showNotification("Please select both a column and a value to filter.", "error");
         return;
     }
     
@@ -818,7 +898,7 @@ async function applyRawFilter() {
             // Reset filter selection since unique values might have changed
             document.getElementById('filter-value').innerHTML = '<option value="">Select Value...</option>';
         } else {
-            alert("Error: " + data.error);
+            showNotification("Error: " + data.error, "error");
             updateStatus("Filtering Failed.");
         }
     } catch (e) {
@@ -834,7 +914,7 @@ async function combineRawRemarks() {
     const rem3Col = document.getElementById('combine-rem3-col').value;
     
     if (!invCol) {
-        alert("Please select an Invoice column.");
+        showNotification("Please select an Invoice column.", "error");
         return;
     }
     
@@ -855,9 +935,9 @@ async function combineRawRemarks() {
         if (data.preview) {
             updateStatus("Remarks combined. Reloading preview...");
             await reloadRawData();
-            alert("Remarks combined successfully.");
+            showNotification("Remarks combined successfully.", "success");
         } else {
-            alert("Error: " + (data.error || "Unknown error"));
+            showNotification("Error: " + (data.error || "Unknown error"), "error");
             updateStatus("Combination failed.");
         }
     } catch (e) {
@@ -1057,7 +1137,7 @@ function checkTotalMismatch(id1, id2, stepName) {
 
     if (isError) {
         updateStatus("⚠️ " + msg.replace(/\n/g, " "));
-        alert(msg);
+        showNotification(msg, "error");
     } else {
         updateStatus("✅ " + msg);
     }
@@ -1222,7 +1302,10 @@ function consolidateRows(rows, keyIndices = [1]) {
             grouped[compositeKey]._remarkPool = [];
             remarkIndices.forEach(idx => {
                 const val = (row[idx] || "").toString().trim();
-                if (val) grouped[compositeKey]._remarkPool.push(val);
+                const lower = val.toLowerCase();
+                if (val && lower !== "none" && lower !== "null" && lower !== "undefined" && lower !== "nan") {
+                    grouped[compositeKey]._remarkPool.push(val);
+                }
             });
         } else {
             // Aggregate - remove commas first
@@ -1230,10 +1313,13 @@ function consolidateRows(rows, keyIndices = [1]) {
             const amtVal = (row[amtIdx] || "0").toString().replace(/,/g, '');
             grouped[compositeKey][balIdx] += parseFloat(balVal) || 0;
             grouped[compositeKey][amtIdx] += parseFloat(amtVal) || 0;
-            // Collect Remarks
+            // Collect Remarks with strict filtering
             remarkIndices.forEach(idx => {
                 const val = (row[idx] || "").toString().trim();
-                if (val) grouped[compositeKey]._remarkPool.push(val);
+                const lower = val.toLowerCase();
+                if (val && lower !== "none" && lower !== "null" && lower !== "undefined" && lower !== "nan") {
+                    grouped[compositeKey]._remarkPool.push(val);
+                }
             });
         }
     });
@@ -1249,7 +1335,7 @@ function consolidateRows(rows, keyIndices = [1]) {
             const uniqueRemarks = [...new Set(row._remarkPool)];
             row[8] = uniqueRemarks.slice(0, 1).join('');
             row[9] = uniqueRemarks.slice(1, 2).join('');
-            row[10] = uniqueRemarks.slice(2).join(', '); // Overflow into Remark 3
+            row[10] = uniqueRemarks.slice(2).join(' | '); // Overflow joiner changed to pipe
             delete row._remarkPool;
         }
         
@@ -1281,132 +1367,120 @@ function confirmMapping() {
 
     // Validate Mandatory Key (Inv No = Index 1)
     if (!mappingState || !mappingState[1]) {
-        alert("Critical Error: 'Inv No' column is not mapped. You must map a source column to 'Inv No' to continue.");
+        showNotification("Critical Error: 'Inv No' column is not mapped. You must map a source column to 'Inv No' to continue.", "error");
         updateStatus("Mapping Failed: Missing Invoice Number.");
         return;
     }
 
+    showLoader(true, "Processing Mapping & Filtering...");
     updateStatus("Processing Mapping & Filtering...");
 
-    console.log("DEBUG: confirmMapping START");
-    console.log("DEBUG: mappingState:", JSON.stringify(mappingState));
-    console.log("DEBUG: rawDataStore rows:", rawDataStore.rows.length);
+    try {
+        console.log("DEBUG: confirmMapping START");
+        console.log("DEBUG: mappingState:", JSON.stringify(mappingState));
+        console.log("DEBUG: rawDataStore rows:", rawDataStore.rows.length);
 
-    // Process Data from Raw -> Mapped
-    const newRows = [];
-    let serial = 1;
+        // Process Data from Raw -> Mapped
+        const newRows = [];
+        let serial = 1;
 
-    rawDataStore.rows.forEach((rawRow, rIdx) => {
-        const fmtRow = Array(11).fill("");
-        let hasInvoice = false;
+        rawDataStore.rows.forEach((rawRow, rIdx) => {
+            const fmtRow = Array(11).fill("");
+            let hasInvoice = false;
 
-        for (let i = 1; i < 11; i++) {
-            const srcCol = mappingState[i];
-            if (srcCol) {
-                const rawHeaderIdx = rawDataStore.headers.indexOf(srcCol);
-                if (rawHeaderIdx !== -1) {
-                    const val = rawRow[rawHeaderIdx];
-                    let finalVal = val !== null && val !== undefined ? val : "";
+            for (let i = 1; i < 11; i++) {
+                const srcCol = mappingState[i];
+                if (srcCol) {
+                    const rawHeaderIdx = rawDataStore.headers.indexOf(srcCol);
+                    if (rawHeaderIdx !== -1) {
+                        const val = rawRow[rawHeaderIdx];
+                        let finalVal = val !== null && val !== undefined ? val : "";
 
-                    // Format Date if index 2
-                    if (i === 2 && finalVal !== "") {
-                        finalVal = excelDateToJSDate(finalVal);
-                    }
+                        // Format Date if index 2
+                        if (i === 2 && finalVal !== "") {
+                            finalVal = excelDateToJSDate(finalVal);
+                        }
 
-                    fmtRow[i] = finalVal;
+                        fmtRow[i] = finalVal;
 
-                    // Inv No is Index 1
-                    if (i === 1 && fmtRow[i].toString().trim() !== "") {
-                        hasInvoice = true;
+                        // Inv No is Index 1 - Strict Filter
+                        if (i === 1) {
+                            const inv = fmtRow[i].toString().trim().toLowerCase();
+                            if (inv !== "" && inv !== "none" && inv !== "total" && inv !== "null") {
+                                hasInvoice = true;
+                            }
+                        }
                     }
                 }
             }
+
+            if (hasInvoice) {
+                fmtRow[0] = serial++;
+                newRows.push(fmtRow);
+            }
+        });
+
+        console.log(`DEBUG: Generated ${newRows.length} new rows.`);
+
+        if (newRows.length === 0) {
+            showNotification("Zero rows generated! Check your 'Inv No' mapping.", "error");
+            updateStatus("Mapping Error: 0 rows generated.");
+            return;
         }
 
-        if (hasInvoice) {
-            fmtRow[0] = serial++;
-            newRows.push(fmtRow);
-        }
-    });
+        mappedData = {
+            headers: FIXED_SCHEMA,
+            rows: newRows
+        };
 
-    console.log(`DEBUG: Generated ${newRows.length} new rows.`);
+        // Render Mapped Data (Source)
+        originalFormattedData = mappedData;
+        renderTable('formatted-preview-table', FIXED_SCHEMA, newRows, true, currentHeaders);
 
-    if (newRows.length === 0) {
-        const invCol = mappingState[1] || "None";
-        let validInvCount = 0;
-        let sampleVal = "N/A";
+        // Auto-Open Rules Section
+        toggleSidebarSection('side-rules-section');
 
-        if (rawDataStore && rawDataStore.headers.indexOf(invCol) !== -1) {
-            const idx = rawDataStore.headers.indexOf(invCol);
-            rawDataStore.rows.forEach(r => {
-                if (r[idx] && r[idx].toString().trim() !== "") validInvCount++;
-            });
-            if (rawDataStore.rows.length > 0) sampleVal = rawDataStore.rows[0][idx];
-        }
+        // Precise Raw Calculation based on Mapping Selection
+        let rawBalSum = 0;
+        let rawAdjSum = 0;
+        const invMapCol = mappingState[1];
+        const balMapCol = mappingState[5];
+        const adjMapCol = mappingState[6];
 
-        alert(`Warning: 0 rows generated!\n\nDiagnostics:\n- Mapped 'Inv No' to: "${invCol}"\n- Total Raw Rows: ${rawDataStore.rows.length}\n- 'Inv No' Values Found: ${validInvCount}\n- Sample Value (Row 1): "${sampleVal}"\n\nSolution: Please select a column that actually contains Invoice Numbers.`);
+        const rawInvIdx = invMapCol ? rawDataStore.headers.indexOf(invMapCol) : -1;
+        const rawBalIdx = balMapCol ? rawDataStore.headers.indexOf(balMapCol) : -1;
+        const rawAdjIdx = adjMapCol ? rawDataStore.headers.indexOf(adjMapCol) : -1;
 
-        updateStatus("Mapping Error: 0 rows generated.");
-        return;
+        rawDataStore.rows.forEach(r => {
+            const hasInv = rawInvIdx !== -1 && r[rawInvIdx] && r[rawInvIdx].toString().trim() !== "";
+            if (hasInv) {
+                if (rawBalIdx !== -1) rawBalSum += parseFloat(r[rawBalIdx]) || 0;
+                if (rawAdjIdx !== -1) rawAdjSum += parseFloat(r[rawAdjIdx]) || 0;
+            }
+        });
+
+        tableTotals['raw-preview-table'] = {
+            balance: parseFloat(rawBalSum.toFixed(2)),
+            adjust: parseFloat(rawAdjSum.toFixed(2))
+        };
+
+        // Validate Totals
+        checkTotalMismatch('raw-preview-table', 'formatted-preview-table', 'Column Mapping');
+
+        // Save BASE state
+        saveFullData(newRows);
+
+        // Auto-Expand
+        toggleSection('formatted-section', true);
+        toggleSidebarSection('side-rules-section', true);
+
+        showNotification("Mapping confirmed successfully!", "success");
+    } catch (e) {
+        console.error("Mapping Error:", e);
+        showNotification("An error occurred during mapping: " + e.message, "error");
+    } finally {
+        showLoader(false);
     }
-
-    // Auto-populate CustomerCode logic MOVED to applyPipeline (Rules Stage)
-    // per user request: "Coverted data should not take the CutomerCode after column mapping. It should load after Logic & Rules applied."
-
-    /* 
-    // DEPRECATED BLOCK
-    const formatSelect = document.getElementById('format-select');
-    // ...
-    */
-    console.log("Debug: CustomerCode population deferred to Rules Engine.");
-
-    // Store Base Mapped Data
-    mappedData = {
-        headers: FIXED_SCHEMA,
-        rows: newRows
-    };
-
-    // Render Mapped Data (Source)
-    originalFormattedData = mappedData;
-    renderTable('formatted-preview-table', FIXED_SCHEMA, newRows, true, currentHeaders);
-
-    // Auto-Open Rules Section
-    toggleSidebarSection('side-rules-section');
-
-    // Precise Raw Calculation based on Mapping Selection
-    // Only sum rows that HAVE an invoice (matching the filtering logic above)
-    let rawBalSum = 0;
-    let rawAdjSum = 0;
-    const invMapCol = mappingState[1];
-    const balMapCol = mappingState[5];
-    const adjMapCol = mappingState[6];
-
-    const rawInvIdx = invMapCol ? rawDataStore.headers.indexOf(invMapCol) : -1;
-    const rawBalIdx = balMapCol ? rawDataStore.headers.indexOf(balMapCol) : -1;
-    const rawAdjIdx = adjMapCol ? rawDataStore.headers.indexOf(adjMapCol) : -1;
-
-    rawDataStore.rows.forEach(r => {
-        const hasInv = rawInvIdx !== -1 && r[rawInvIdx] && r[rawInvIdx].toString().trim() !== "";
-        if (hasInv) {
-            if (rawBalIdx !== -1) rawBalSum += parseFloat(r[rawBalIdx]) || 0;
-            if (rawAdjIdx !== -1) rawAdjSum += parseFloat(r[rawAdjIdx]) || 0;
-        }
-    });
-
-    tableTotals['raw-preview-table'] = {
-        balance: parseFloat(rawBalSum.toFixed(2)),
-        adjust: parseFloat(rawAdjSum.toFixed(2))
-    };
-
-    // Validate Totals (Compare Raw with Mapped)
-    checkTotalMismatch('raw-preview-table', 'formatted-preview-table', 'Column Mapping');
-
-    // Save BASE state (just in case user exports without rules)
-    saveFullData(newRows);
-
-    // Auto-Expand Converted Data & Rules
-    toggleSection('formatted-section', true);
-    toggleSidebarSection('side-rules-section', true);
 }
 
 async function saveFullData(rows) {
@@ -1661,8 +1735,8 @@ async function prepareFile() {
     const btnPrepare = document.getElementById('btn-prepare');
     btnPrepare.disabled = true;
 
+    showLoader(true, "Preparing File(s) for download...");
     try {
-        updateStatus("Preparing File(s) for download...");
         const formatSelect = document.getElementById('export-format');
         const fileFormat = formatSelect ? formatSelect.value : 'xlsx';
         const profile = document.getElementById('format-select').value;
@@ -1804,12 +1878,17 @@ async function prepareFile() {
                 throw new Error(data.error || "Unknown export error");
             }
         }
+        if (preparedFilename || preparedFiles.length > 0) {
+            showNotification("File(s) prepared successfully!", "success");
+        }
     } catch (e) {
         console.error(e);
         updateStatus("Preparation Error: " + e.message);
+        showNotification("Preparation Failed: " + e.message, "error");
     } finally {
         const btnPrepare = document.getElementById('btn-prepare');
         if (btnPrepare) btnPrepare.disabled = false;
+        showLoader(false);
     }
 }
 
@@ -1884,7 +1963,7 @@ async function saveTemplate(type) {
     const nameInput = document.getElementById(`${type}-template-name`);
     const name = nameInput.value.trim();
     if (!name) {
-        alert("Please enter a template name.");
+        showNotification("Please enter a template name.", "error");
         return;
     }
 
@@ -1934,7 +2013,7 @@ async function saveTemplate(type) {
             nameInput.value = ''; // Clear input
             fetchTemplates(); // Refresh list
         } else {
-            alert("Save Failed: " + saveData.error);
+            showNotification("Save Failed: " + saveData.error, "error");
         }
     } catch (e) {
         console.error(e);
@@ -1951,7 +2030,7 @@ async function loadTemplate(type, name) {
     }
 
     if (!name) {
-        alert("Please select a template first.");
+        showNotification("Please select a template first.", "error");
         return;
     }
 
@@ -1978,10 +2057,12 @@ async function loadTemplate(type, name) {
             applyRulesTemplate(config);
         }
         updateStatus(`Template '${name}' Loaded.`);
+        showNotification(`Template '${name}' Loaded.`, "success");
 
     } catch (e) {
         console.error(e);
         updateStatus("Error loading template.");
+        showNotification("Error loading template.", "error");
     }
 }
 
@@ -1990,7 +2071,7 @@ async function deleteSelectedTemplate(type) {
     const name = select?.value;
     
     if (!name) {
-        alert("Please select a template to delete.");
+        showNotification("Please select a template to delete.", "error");
         return;
     }
     
@@ -2016,11 +2097,11 @@ async function deleteSelectedTemplate(type) {
             updateStatus(`Template '${name}' deleted.`);
             fetchTemplates(); // Refresh List
         } else {
-            alert("Delete Failed: " + (data.error || "Unknown error"));
+            showNotification("Delete Failed: " + (data.error || "Unknown error"), "error");
         }
     } catch (e) {
         console.error(e);
-        alert("Error deleting template: " + e.message);
+        showNotification("Error deleting template: " + e.message, "error");
     }
 }
 
@@ -2046,7 +2127,7 @@ async function deleteTemplate(type, name) {
             updateStatus(`Template '${name}' deleted.`);
             fetchTemplates(); // Refresh List
         } else {
-            alert("Delete Failed: " + data.error);
+            showNotification("Delete Failed: " + data.error, "error");
         }
     } catch (e) {
         console.error(e);
@@ -2058,7 +2139,7 @@ async function deleteTemplate(type, name) {
 
 function applyMappingTemplate(savedMapping) {
     if (!rawDataStore || !rawDataStore.headers) {
-        alert("Please load a file first.");
+        showNotification("Please load a file first.", "error");
         return;
     }
 

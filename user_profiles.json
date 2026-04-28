@@ -1,6 +1,17 @@
 {
     "_TEMPLATES_": {
         "mapping": {
+            "360": {
+                "1": "Invoice No",
+                "2": "Treatment Date",
+                "3": "CPR",
+                "4": "Member Name",
+                "5": "Gross Amount",
+                "6": "Net Paid",
+                "8": "Remark 1",
+                "9": "Remark 2",
+                "10": "Remark 3"
+            },
             "AMERICAN LIFE INSURANCE": {
                 "1": "Invoice No.",
                 "2": "Inv. Date",
@@ -45,6 +56,14 @@
                 "8": "PRIMARY_REASON",
                 "9": "SECONDARY_REASON"
             },
+            "Bupa_FInal": {
+                "1": "INVOICE_NO",
+                "2": "TREATMENT_TO_DATE",
+                "6": "AMOUNT_PAID",
+                "8": "Remark 1",
+                "9": "Remark 2",
+                "10": "Remark 3"
+            },
             "Cigna 020": {
                 "1": "Invoice Ref.",
                 "2": "Invoice Date",
@@ -59,34 +78,10 @@
                 "8": "Denial/Rejection reason",
                 "9": "External Comments"
             },
-            "Gem 020": {
-                "1": "Invoice No",
-                "2": "Date Of Treatement",
-                "6": "Net Payment",
-                "8": "Bank charge to Client"
-            },
             "Globemed 020": {
                 "1": "INVOICENUMBER",
                 "6": "PROVIDERNET DETAILS",
                 "8": "REMARK"
-            },
-            "H360 PDF": {
-                "1": "Invoice No",
-                "2": "Date Of Treatement",
-                "3": "Member No.",
-                "4": "Member No.",
-                "6": "Net Payment",
-                "8": "Bank charge to Client"
-            },
-            "H360-1": {
-                "1": "Invoice No",
-                "6": "Net Paid",
-                "8": "Remark 1",
-                "9": "Remark 2",
-                "10": "Remark 3"
-            },
-            "HEALTH 360": {
-                "2": "CPRNo"
             },
             "MSH 020": {
                 "1": "Invoice No",
@@ -139,13 +134,13 @@
                 "6": "NET_PAID",
                 "8": "NON_PAY_REASON_DESC"
             },
-            "Bupa_FInal": {
-                "1": "INVOICE_NO",
-                "2": "TREATMENT_TO_DATE",
-                "6": "AMOUNT_PAID",
-                "8": "Remark 1",
-                "9": "Remark 2",
-                "10": "Remark 3"
+            "GEM": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "3": "Member No.",
+                "4": "Member Name",
+                "6": "Net Payment",
+                "8": "Bank charge to Client"
             }
         },
         "rules": {

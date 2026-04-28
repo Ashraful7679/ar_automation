@@ -79,8 +79,9 @@
                             <option value="NEXT_CARE">NEXT CARE</option>
                             <option value="HEALTH_360">HEALTH 360</option>
                             <option value="PAYADVICE">PAYADVICE</option>
+                            <option value="TAWUNIYA">TAWUNIYA</option>
+                            <option value="BUPA">BUPA</option>
                             <option value="WORLDWIDE">WORLDWIDE INSURANCE</option>
-
                         </select>
                     </div>
 
@@ -443,6 +444,18 @@
     </section>
     </main>
     </div>
+    <!-- Loader Overlay -->
+    <div id="loader-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+        <div class="spinner"></div>
+        <div id="loader-text" style="color: white; font-size: 1.1rem; font-weight: 500;">Processing Data...</div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"
+        style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;">
+    </div>
+
     <script src="/static/script.js"></script>
 </body>
 

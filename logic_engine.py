@@ -73,6 +73,10 @@ class LogicEngine:
             return GemsParser()
         elif profile_name == 'PAYADVICE':
             return PayAdviceParser()
+        elif profile_name == 'TAWUNIYA':
+            return WorldwideParser() # Placeholder
+        elif profile_name == 'BUPA':
+            return WorldwideParser() # Placeholder
         elif profile_name == 'WORLDWIDE':
             return WorldwideParser()
         elif profile_name == 'NEXT_CARE':
@@ -643,7 +647,7 @@ class LogicEngine:
 
         self._create_table(self.headers)
 
-        rows = df.astype(object).where(pd.notnull(df), None).values.tolist()
+        rows = df.astype(object).where(pd.notnull(df), "").values.tolist()
         rows = self._clean_numeric_columns(rows)
 
         if rows:
