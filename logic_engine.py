@@ -135,7 +135,40 @@ class LogicEngine:
             print(f"DEBUG: _persist_formatted_data: Inserted {len(formatted_rows)} rows into {self.formatted_table_name}")
         self.conn.commit()
 
+    def clear_temp_folders(self, exclude_file=None):
+        """Clears output and uploads folders to save space."""
+        # Get base path correctly for both dev and frozen (exe) environments
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = self._get_base_path()
+            
+        temp_dirs = [
+            os.path.join(base_dir, 'output'),
+            os.path.join(base_dir, 'uploads')
+        ]
+        
+        exclude_path = os.path.normpath(exclude_file) if exclude_file else None
+        
+        for d in temp_dirs:
+            if os.path.exists(d):
+                for f in os.listdir(d):
+                    file_path = os.path.normpath(os.path.join(d, f))
+                    try:
+                        # Don't delete the file we are currently trying to load
+                        if exclude_path and file_path == exclude_path:
+                            continue
+                            
+                        # Only delete files, keep the directory
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error clearing {file_path}: {e}")
+
     def load_file(self, file_path, profile_name='default', sheet_name=None):
+        # Clear previous files before loading new one, but keep the current one
+        self.clear_temp_folders(exclude_file=file_path)
+        
         ext = os.path.splitext(file_path)[1].lower()
 
         self.cursor.execute(f"DROP TABLE IF EXISTS {self.table_name}")

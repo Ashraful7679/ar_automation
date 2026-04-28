@@ -330,7 +330,7 @@ function applyPipeline(stage = 'full', shouldSave = false) {
 
             // Split by common delimiters: space, comma, pipe
             // For slash, we only split if it doesn't look like a suffix (e.g. INV/1)
-            let initialParts = invVal.split(/[\s,|]+/).filter(p => p.trim() !== "");
+            let initialParts = invVal.split(/[\s,|@]+/).filter(p => p.trim() !== "");
             let splitParts = [];
 
             initialParts.forEach(p => {
