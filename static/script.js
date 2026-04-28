@@ -57,13 +57,18 @@ let resultData11 = null; // Store 11-column version for DB saving
 function cleanInvoiceNumber(invNo) {
     if (!invNo) return "";
     invNo = invNo.toString().trim();
-    // Remove patterns like /123, -1, -2, etc at end if they look like continuation markers
-    // Keep only alphanumeric and underscores
-    // Remove trailing / or /number or -number that looks like a continuation
-    invNo = invNo.replace(/\/+$/, '');      // Remove trailing / or /123/ etc
-    invNo = invNo.replace(/\/[0-9]+$/, '');  // Remove /123 at end
-    invNo = invNo.replace(/-[0-9]+$/, '');   // Remove -1, -2, etc at end
-    return invNo;
+    
+    // Normalize Unicode dashes (hyphen, en-dash, em-dash, etc.) to standard hyphen
+    invNo = invNo.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-');
+    
+    // Remove patterns like /1, /2, -1, -2 at end (up to 2 digits, even with spaces)
+    // Using [-\u2010-\u2015\u2212] just in case normalization missed something
+    invNo = invNo.replace(/\s*[\/\-‐−][0-9]{1,2}$/, ''); 
+    
+    // Remove any trailing slashes or hyphens
+    invNo = invNo.replace(/[\/\-‐−]+$/, '');
+    
+    return invNo.trim();
 }
 
 // Convert Excel serial date to YYYY-MM-DD
@@ -308,13 +313,66 @@ function applyPipeline(stage = 'full', shouldSave = false) {
 
     try {
         // 1. Start with Mapped Data
-        let pipelineRows = JSON.parse(JSON.stringify(mappedData.rows)); // Deep Copy
+        const rawMappedRows = JSON.parse(JSON.stringify(mappedData.rows)); // Deep Copy
+        let pipelineRows = [];
 
-        // Clean invoice numbers - remove /suffix, -1, -2, etc
-        const invIndex = 1;
-        pipelineRows.forEach(row => {
-            if (row[invIndex]) {
-                row[invIndex] = cleanInvoiceNumber(row[invIndex]);
+        // Clean & Split Invoice Numbers
+        rawMappedRows.forEach(row => {
+            let invVal = (row[1] || "").toString().trim();
+            if (!invVal) {
+                pipelineRows.push(row);
+                return;
+            }
+
+            // Normalize dashes and fix orphaned suffixes (e.g. "INV - 1" -> "INV-1")
+            invVal = invVal.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, '-');
+            invVal = invVal.replace(/\s+([-\/][0-9]{1,2})\b/g, '$1');
+
+            // Split by common delimiters: space, comma, pipe
+            // For slash, we only split if it doesn't look like a suffix (e.g. INV/1)
+            let initialParts = invVal.split(/[\s,|]+/).filter(p => p.trim() !== "");
+            let splitParts = [];
+
+            initialParts.forEach(p => {
+                if (p.includes('/')) {
+                    // If it ends with /digit(s) (1-2 digits), it's a suffix, don't split here
+                    if (p.match(/\/[0-9]{1,2}$/)) {
+                        splitParts.push(p);
+                    } else {
+                        // Split by /
+                        p.split('/').forEach(sp => {
+                            if (sp.trim()) splitParts.push(sp.trim());
+                        });
+                    }
+                } else {
+                    splitParts.push(p);
+                }
+            });
+
+            // Clean each part
+            let cleanParts = splitParts.map(p => cleanInvoiceNumber(p)).filter(p => p !== "");
+
+            // If we have multiple parts, ignore those that are just 1-2 digits (likely orphaned suffixes)
+            if (cleanParts.length > 1) {
+                cleanParts = cleanParts.filter(p => !p.match(/^[0-9]{1,2}$/));
+            }
+
+            if (cleanParts.length <= 1) {
+                let finalRow = [...row];
+                finalRow[1] = cleanParts.length === 1 ? cleanParts[0] : invVal;
+                pipelineRows.push(finalRow);
+            } else {
+                // Split into multiple rows
+                cleanParts.forEach((cleanInv, idx) => {
+                    let newRow = [...row];
+                    newRow[1] = cleanInv;
+                    if (idx > 0) {
+                        // 2nd row onwards: Zero balance/adjust per user request
+                        newRow[5] = 0; // Invoice Balance
+                        newRow[6] = 0; // Amt To Adjust
+                    }
+                    pipelineRows.push(newRow);
+                });
             }
         });
 
@@ -1092,7 +1150,7 @@ function renderTable(tableId, headers, rows, editable = false, sourceOptions = [
     table.appendChild(tbody);
 
     // Update Global Totals
-    tableTotals[tableId] = { balance: parseFloat(totalBal.toFixed(2)), adjust: parseFloat(totalAdj.toFixed(2)) };
+    tableTotals[tableId] = { balance: parseFloat(totalBal.toFixed(3)), adjust: parseFloat(totalAdj.toFixed(3)) };
 
     // Update Section Header Stats
     let sectionId = '';
@@ -1326,8 +1384,8 @@ function consolidateRows(rows, keyIndices = [1]) {
 
     // Format Result
     Object.values(grouped).forEach(row => {
-        row[balIdx] = row[balIdx].toFixed(2);
-        row[amtIdx] = row[amtIdx].toFixed(2);
+        row[balIdx] = row[balIdx].toFixed(3);
+        row[amtIdx] = row[amtIdx].toFixed(3);
         
         // Final Remarks: If we have pooled remarks, join them but ideally keep 3 columns if possible?
         // For simplicity during consolidation, we join unique remarks into Remark 1.
@@ -1460,8 +1518,8 @@ function confirmMapping() {
         });
 
         tableTotals['raw-preview-table'] = {
-            balance: parseFloat(rawBalSum.toFixed(2)),
-            adjust: parseFloat(rawAdjSum.toFixed(2))
+            balance: parseFloat(rawBalSum.toFixed(3)),
+            adjust: parseFloat(rawAdjSum.toFixed(3))
         };
 
         // Validate Totals

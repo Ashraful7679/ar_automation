@@ -1,17 +1,6 @@
 {
     "_TEMPLATES_": {
         "mapping": {
-            "360": {
-                "1": "Invoice No",
-                "2": "Treatment Date",
-                "3": "CPR",
-                "4": "Member Name",
-                "5": "Gross Amount",
-                "6": "Net Paid",
-                "8": "Remark 1",
-                "9": "Remark 2",
-                "10": "Remark 3"
-            },
             "AMERICAN LIFE INSURANCE": {
                 "1": "Invoice No.",
                 "2": "Inv. Date",
@@ -70,6 +59,14 @@
                 "4": "Patient Name",
                 "6": "Payment in billed currency",
                 "8": "Payment Detail"
+            },
+            "GEM": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "3": "Member No.",
+                "4": "Member Name",
+                "6": "Net Payment",
+                "8": "Bank charge to Client"
             },
             "GIG Gulf 020": {
                 "1": "Provider Invoice Number",
@@ -134,13 +131,14 @@
                 "6": "NET_PAID",
                 "8": "NON_PAY_REASON_DESC"
             },
-            "GEM": {
+            "H360": {
                 "1": "Invoice No",
-                "2": "Date Of Treatement",
-                "3": "Member No.",
+                "2": "Treatment Date",
+                "3": "CPR",
                 "4": "Member Name",
-                "6": "Net Payment",
-                "8": "Bank charge to Client"
+                "5": "Gross Amount",
+                "6": "Net Paid",
+                "8": "Remarks"
             }
         },
         "rules": {

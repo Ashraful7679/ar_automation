@@ -331,7 +331,18 @@ class LogicEngine:
                 for _ in range(4):
                     writer.writerow([])
                 writer.writerow(formatted_headers)
-                writer.writerows(formatted_rows)
+                # Format numeric columns to 3 decimals for CSV
+                rows_to_csv = []
+                for row in formatted_rows:
+                    new_row = list(row)
+                    for i in [5, 6]:
+                        if i < len(new_row) and new_row[i] is not None:
+                            try:
+                                new_row[i] = f"{float(new_row[i]):.3f}"
+                            except:
+                                pass
+                    rows_to_csv.append(new_row)
+                writer.writerows(rows_to_csv)
         elif ext == 'pdf':
             self._generate_pdf(output_path, formatted_headers, formatted_rows, profile_name)
         elif ext == 'xls':
@@ -357,10 +368,15 @@ class LogicEngine:
                         ws = wb.get_sheet(0)
                         
                         # Write data starting from A6 (Row Index 5)
+                        import xlwt
+                        num_style = xlwt.easyxf(num_format_str='0.000')
                         for r_idx, row_data in enumerate(rows_to_write):
                             for c_idx, val in enumerate(row_data):
                                 if c_idx < 9: # Only A-I (9 columns)
-                                    ws.write(r_idx + 5, c_idx, val)
+                                    if c_idx in [5, 6]:
+                                        ws.write(r_idx + 5, c_idx, val, num_style)
+                                    else:
+                                        ws.write(r_idx + 5, c_idx, val)
                         wb.save(output_path)
                     except Exception as e:
                         print(f"DEBUG: xlutils copy failed: {e}")
@@ -398,7 +414,7 @@ class LogicEngine:
                     for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=6, max_col=7):
                         for cell in row:
                             if cell.value is not None:
-                                cell.number_format = numbers.FORMAT_NUMBER_00
+                                cell.number_format = '0.000'
             except Exception as e:
                 # Fallback to manual openpyxl if pandas fails
                 print(f"Pandas export failed, using fallback: {e}")
