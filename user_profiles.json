@@ -11,84 +11,61 @@
                 "9": "Remarks -2",
                 "10": "Remarks -3"
             },
-            "ARABIAN": {
-                "1": "Inv. No",
-                "2": "Inv. Date",
-                "3": "HR/File No.",
-                "4": "Insured Name",
-                "5": "Payable"
+            "AXA PPP 020": {
+                "1": "Your Invoice Number",
+                "2": "Global Date",
+                "4": "Patient Name",
+                "6": "Amount Paid",
+                "8": "See Note"
             },
-            "Arabian Shield": {
+            "Allianz 020": {
+                "1": "Provider invoice reference",
+                "2": "Treatment date",
+                "6": "Amount paid in payment currency BHD",
+                "8": "Additional Explanation"
+            },
+            "American Life Insurance 020": {
+                "1": "Invoice No.",
+                "2": "Cheq. Date",
+                "4": "Patient Name",
+                "6": "Paid",
+                "8": "Remarks -1",
+                "9": "Remarks -2",
+                "10": "Remarks -3"
+            },
+            "Arabian Shield 020": {
                 "1": "Inv. No",
                 "2": "Inv. Date",
-                "3": "Insured No",
-                "4": "Insured Name",
                 "6": "Tot Payable"
             },
-            "Arabian2": {
-                "1": "Inv. No",
-                "2": "Inv. Date",
-                "3": "HR/File No.",
-                "4": "Insured Name",
-                "5": "Payable",
-                "6": "Tot Payable"
-            },
-            "BUPA": {
-                "1": "INVOICE_NO",
-                "6": "AMOUNT_PAID",
-                "8": "PRIMARY_REASON"
-            },
-            "BUPAFinal": {
-                "1": "INVOICE_NO",
-                "2": "TREATMENT_TO_DATE",
-                "3": "BUPA_INTL_CLAIM_NO",
-                "4": "MEMBER_NAME",
-                "5": "AMOUNT_CLAIMED",
-                "6": "AMOUNT_PAID",
-                "8": "PRIMARY_REASON",
-                "9": "SECONDARY_REASON"
-            },
-            "BUPAINTL": {
-                "1": "INVOICE_NO",
-                "2": "TREATMENT_FROM_DATE",
-                "6": "AMOUNT_PAID",
-                "8": "PRIMARY_REASON"
-            },
-            "Bupa001": {
+            "Bupa 020": {
                 "1": "INVOICE_NO",
                 "2": "TREATMENT_TO_DATE",
                 "6": "AMOUNT_PAID",
                 "8": "PRIMARY_REASON",
                 "9": "SECONDARY_REASON"
             },
-            "GBM01": {
-                "1": "INVOICENUMBER",
-                "3": "BATCH",
-                "4": "ADHERENTNAME",
-                "5": "PROVIDERNET DETAILS",
-                "8": "REMARK",
-                "9": "DIFFERENCEREASON"
+            "Cigna 020": {
+                "1": "Invoice Ref.",
+                "2": "Invoice Date",
+                "4": "Patient Name",
+                "6": "Payment in billed currency",
+                "8": "Payment Detail"
             },
-            "GEMS3": {
+            "GIG Gulf 020": {
+                "1": "Provider Invoice Number",
+                "2": "Payment Date",
+                "6": "Total Paid",
+                "8": "Denial/Rejection reason",
+                "9": "External Comments"
+            },
+            "Gem 020": {
                 "1": "Invoice No",
                 "2": "Date Of Treatement",
-                "3": "Pat. File No.",
-                "4": "Member Name",
                 "6": "Net Payment",
                 "8": "Bank charge to Client"
             },
-            "GLOB": {
-                "1": "INVOICENUMBER",
-                "2": "PERFORMINGDATE",
-                "8": "REMARK"
-            },
-            "Globemed": {
-                "1": "INVOICENUMBER",
-                "2": "",
-                "6": "PROVIDERNET DETAILS",
-                "8": "REMARK"
-            },
-            "Globemed002": {
+            "Globemed 020": {
                 "1": "INVOICENUMBER",
                 "6": "PROVIDERNET DETAILS",
                 "8": "REMARK"
@@ -101,95 +78,26 @@
                 "6": "Net Payment",
                 "8": "Bank charge to Client"
             },
-            "MEDNET": {
-                "1": "Provider Invoice Nbr",
-                "2": "Invoice Date",
-                "4": "Insured Member",
-                "6": "Paid Amount",
-                "8": "Invoice Notes"
-            },
-            "MSH": {
+            "H360-1": {
                 "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "payment",
-                "8": "Message"
+                "6": "Net Paid",
+                "8": "Remark 1",
+                "9": "Remark 2",
+                "10": "Remark 3"
             },
-            "MSH-3": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Deductible",
-                "8": "Message"
+            "HEALTH 360": {
+                "2": "CPRNo"
             },
-            "MSH001": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Deductible",
-                "8": "Message"
-            },
-            "MSH01": {
+            "MSH 020": {
                 "1": "Invoice No",
                 "2": "Date",
                 "3": "Patient ID",
                 "4": "Patient Name",
                 "5": "payment",
-                "8": "Message"
-            },
-            "MSH02": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient ID",
-                "5": "Deductible",
-                "8": "Message"
-            },
-            "MSH03": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient ID",
                 "6": "Deductible",
                 "8": "Message"
             },
-            "MSH1": {
-                "1": "Date",
-                "2": "Invoice No",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Payment",
-                "8": "Message"
-            },
-            "MSH2": {
-                "1": "Date",
-                "2": "Invoice No",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Original Charge",
-                "8": "Message"
-            },
-            "MSH3": {
-                "1": "Date",
-                "2": "Invoice No",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Deductible",
-                "8": "Message"
-            },
-            "MSH5": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient ID",
-                "5": "payment",
-                "6": "Deductible",
-                "8": "Message"
-            },
-            "Mednet001": {
+            "Mednet 020": {
                 "1": "Provider Invoice Nbr",
                 "2": "Report Date",
                 "6": "Paid Amount",
@@ -204,77 +112,40 @@
                 "9": "Remarks -2",
                 "10": "Remarks -3"
             },
-            "NAS": {
+            "NAS 020": {
                 "1": "InvoiceNo",
-                "2": "TxnDate",
-                "4": "BeneficiaryName",
+                "2": "ChequeDate",
                 "6": "AmountApproved",
-                "8": "AdjustmentReason"
+                "8": "AdjustmentReason",
+                "9": "ReissuedMessage"
             },
-            "Nextcare001": {
+            "Nextcare 020": {
                 "1": "Invoice #",
                 "2": "Date",
                 "6": "Settled Amount",
                 "8": "Remark"
             },
-            "SAICO": {
+            "Saico 020": {
                 "1": "INVOICE NO.",
-                "2": "TREATMENT DATE",
-                "3": "MEMBER NO.",
-                "4": "MEMBER NAME",
-                "5": "INELIGIBLE AMOUNT - LOCAL",
+                "2": "CHEQUE DATE",
                 "6": "NET PAYMENT AMOUNT - LOCAL",
                 "8": "PRIMARY DENIAL",
                 "9": "SECONDARY DENIALS",
                 "10": "DENIAL NOTES"
             },
-            "SOS": {
-                "1": "Document Reference Number",
-                "3": "Case Number",
-                "6": "Document Amount"
-            },
-            "TAWUNIYA": {
+            "Tawuniya 020": {
                 "1": "INVOICE_NO",
                 "2": "LOSS_DATE",
-                "3": "PATIENT_FILE_NO",
                 "6": "NET_PAID",
-                "8": "NON_PAY_REASON_DESC",
-                "9": "NON_PAY_REASON_DESC",
-                "10": "NON_PAY_REASON_DESC"
+                "8": "NON_PAY_REASON_DESC"
             },
-            "gems04": {
-                "1": "Invoice No",
-                "2": "Date Of Treatement",
-                "6": "Net Payment",
-                "8": "Bank charge to Client"
-            },
-            "glob": {
-                "1": "INVOICENUMBER",
-                "2": "PERFORMINGDATE",
-                "3": "STAFFNUMBER",
-                "4": "ADHERENTNAME",
-                "5": "TOTALAPPROVED",
-                "6": "TOTALRECOVERY",
-                "8": "REMARK"
-            },
-            "msh06": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "payment",
-                "8": "Message"
-            },
-            "msh07": {
-                "1": "Invoice No",
-                "2": "Date",
-                "3": "Patient ID",
-                "4": "Patient Name",
-                "6": "Deductible",
-                "8": "Message"
-            },
-            "HEALTH 360": {
-                "2": "CPRNo"
+            "Bupa_FInal": {
+                "1": "INVOICE_NO",
+                "2": "TREATMENT_TO_DATE",
+                "6": "AMOUNT_PAID",
+                "8": "Remark 1",
+                "9": "Remark 2",
+                "10": "Remark 3"
             }
         },
         "rules": {
@@ -295,11 +166,45 @@
                     "s": "ALICO"
                 }
             ],
-            "ARABIAN": [
+            "AXA PPP code 020": [
+                {
+                    "c": "AXAPP100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "AXAPP101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "AXAPP102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Allianz code 020": [
+                {
+                    "c": "ALLIA100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "ALLIA101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "ALLIA102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Arabian Shield code 020": [
                 {
                     "c": "ARABI100",
                     "p": "A",
-                    "s": "ARAB100"
+                    "s": ""
                 },
                 {
                     "c": "ARABI101",
@@ -312,58 +217,92 @@
                     "s": ""
                 }
             ],
-            "Cigna001": [
+            "Bupa code 020": [
                 {
-                    "c": "NEXTC100",
+                    "c": "BUPAI100",
                     "p": "A",
                     "s": ""
                 },
                 {
-                    "c": "NEXTC101",
+                    "c": "BUPAI101",
                     "p": "B",
                     "s": ""
                 },
                 {
-                    "c": "NEXTC102",
+                    "c": "BUPAI102",
                     "p": "C",
                     "s": ""
                 }
             ],
-            "GLOBMED": [
+            "Cigna code 020": [
                 {
-                    "c": "GIX100",
+                    "c": "CIGNA100",
                     "p": "A",
                     "s": ""
                 },
                 {
-                    "c": "GIX101",
+                    "c": "CIGNA101",
                     "p": "B",
                     "s": ""
                 },
                 {
-                    "c": "GIX102",
+                    "c": "CIGNA102",
                     "p": "C",
                     "s": ""
                 }
             ],
-            "GULF": [
+            "GIG GULF code 020": [
                 {
-                    "c": "G1",
+                    "c": "AXAIN100",
                     "p": "A",
                     "s": ""
                 },
                 {
-                    "c": "G2",
+                    "c": "AXAIN101",
                     "p": "B",
                     "s": ""
                 },
                 {
-                    "c": "G3",
+                    "c": "AXAIN102",
                     "p": "C",
                     "s": ""
                 }
             ],
-            "MSH02": [
+            "Gem code 020": [
+                {
+                    "c": "GUNIO100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GUNIO102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Globemed code 020": [
+                {
+                    "c": "ARIGI100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "ARIGI101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "ARIGI102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "MSH code 020": [
                 {
                     "c": "MSHDU100",
                     "p": "A",
@@ -380,75 +319,41 @@
                     "s": ""
                 }
             ],
-            "MSH04": [
+            "Mednet code 020": [
                 {
-                    "c": "MSHDU100",
+                    "c": "MEDNE100",
                     "p": "A",
                     "s": ""
                 },
                 {
-                    "c": "MSHDU101",
+                    "c": "MEDNE101",
                     "p": "B",
                     "s": ""
                 },
                 {
-                    "c": "MSHDU102",
+                    "c": "MEDNE102",
                     "p": "C",
                     "s": ""
                 }
             ],
-            "NAS": [
+            "NAS code 020": [
                 {
-                    "c": "100",
-                    "p": "NAS",
-                    "s": "NASIN"
+                    "c": "NASIN100",
+                    "p": "A",
+                    "s": ""
                 },
                 {
-                    "c": "101",
-                    "p": "NAS",
-                    "s": "NASIN"
-                },
-                {
-                    "c": "102",
-                    "p": "NAS",
-                    "s": "NASIN"
-                }
-            ],
-            "NEXT 03": [
-                {
-                    "c": "100",
-                    "p": "a",
-                    "s": "NEXTC"
-                },
-                {
-                    "c": "101",
+                    "c": "NASIN101",
                     "p": "B",
-                    "s": "NEXTC"
+                    "s": ""
                 },
                 {
-                    "c": "102",
+                    "c": "NASIN102",
                     "p": "C",
-                    "s": "NEXTC"
+                    "s": ""
                 }
             ],
-            "NEXTCARE 01": [
-                {
-                    "c": "100",
-                    "p": "a",
-                    "s": "NEXTC"
-                },
-                {
-                    "c": "101",
-                    "p": "B",
-                    "s": "NEXTC"
-                },
-                {
-                    "c": "102",
-                    "p": "C",
-                    "s": "NEXTC"
-                }
-            ],
-            "Nextcare001": [
+            "Nextcare code 020": [
                 {
                     "c": "NEXTC100",
                     "p": "A",
@@ -465,14 +370,24 @@
                     "s": ""
                 }
             ],
-            "TAWUNIYACODE": [
+            "Saico code 020": [
                 {
-                    "c": "TICIN100",
+                    "c": "SAICO100",
                     "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "SAICO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "SAICO102",
+                    "p": "C",
                     "s": ""
                 }
             ],
-            "TAWUNIYACOde": [
+            "Tawuniya code 020": [
                 {
                     "c": "TICIN100",
                     "p": "A",
@@ -489,72 +404,21 @@
                     "s": ""
                 }
             ],
-            "gems01": [
+            "American Life Insurance code 020": [
                 {
-                    "c": "GUNIO100",
                     "p": "A",
-                    "s": ""
+                    "s": "",
+                    "c": "ALICO100"
                 },
                 {
-                    "c": "GUNIO101",
                     "p": "B",
-                    "s": ""
+                    "s": "",
+                    "c": "ALICO101"
                 },
                 {
-                    "c": "GUNIO102",
                     "p": "C",
-                    "s": ""
-                }
-            ],
-            "gems1": [
-                {
-                    "c": "GUNIO100",
-                    "p": "A",
-                    "s": ""
-                },
-                {
-                    "c": "GUNIO101",
-                    "p": "B",
-                    "s": ""
-                },
-                {
-                    "c": "GUNIO102",
-                    "p": "C",
-                    "s": ""
-                }
-            ],
-            "gems2": [
-                {
-                    "c": "GUNIO100",
-                    "p": "A",
-                    "s": ""
-                },
-                {
-                    "c": "GUNIO101",
-                    "p": "B",
-                    "s": ""
-                },
-                {
-                    "c": "GUNIO102",
-                    "p": "C",
-                    "s": ""
-                }
-            ],
-            "NAS INTERNATIONAL": [
-                {
-                    "p": "NAS",
-                    "s": "NASIN",
-                    "c": "100"
-                },
-                {
-                    "p": "NAS",
-                    "s": "NASIN",
-                    "c": "101"
-                },
-                {
-                    "p": "NAS",
-                    "s": "NASIN",
-                    "c": "102"
+                    "s": "",
+                    "c": "ALICO102"
                 }
             ]
         }

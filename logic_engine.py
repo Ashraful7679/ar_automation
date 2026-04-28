@@ -15,6 +15,7 @@ from parsers.gems import GemsParser
 from parsers.payadvice import PayAdviceParser
 from parsers.worldwide import WorldwideParser
 from parsers.nextcare import NextcareParser
+from parsers.health360 import Health360Parser
 from fpdf import FPDF
 from datetime import datetime
 import sys
@@ -76,6 +77,8 @@ class LogicEngine:
             return WorldwideParser()
         elif profile_name == 'NEXT_CARE':
             return NextcareParser()
+        elif profile_name == 'HEALTH_360':
+            return Health360Parser()
         return None
 
     def _run_parser(self, parser_instance, file_path):
@@ -89,9 +92,13 @@ class LogicEngine:
         self.headers = self.current_parser.raw_headers
         self._create_table(self.headers)
         if rows:
-            placeholder = ','.join(['?']*len(self.headers))
+            # Pad rows to match the new headers (which include the extra columns)
+            num_cols = len(self.headers)
+            padded_rows = [list(r) + [""] * (num_cols - len(r)) for r in rows]
+            
+            placeholder = ','.join(['?']*num_cols)
             cols = ', '.join([f'"{h}"' for h in self.headers])
-            self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
+            self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", padded_rows)
         self.conn.commit()
 
     def _create_formatted_table(self, headers):
@@ -101,7 +108,9 @@ class LogicEngine:
 
     def _persist_formatted_data(self):
         if not self.current_parser:
+             print("DEBUG: _persist_formatted_data: No current_parser set!")
              return
+        print(f"DEBUG: _persist_formatted_data: Using parser {type(self.current_parser).__name__}")
 
         self.cursor.execute(f'SELECT * FROM {self.table_name}')
         col_names = [desc[0] for desc in self.cursor.description]
@@ -119,6 +128,7 @@ class LogicEngine:
             placeholder = ','.join(['?']*len(self.formatted_headers))
             cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
             self.cursor.executemany(f"INSERT INTO {self.formatted_table_name} ({cols}) VALUES ({placeholder})", formatted_rows)
+            print(f"DEBUG: _persist_formatted_data: Inserted {len(formatted_rows)} rows into {self.formatted_table_name}")
         self.conn.commit()
 
     def load_file(self, file_path, profile_name='default', sheet_name=None):
@@ -159,48 +169,97 @@ class LogicEngine:
         else:
             return self.get_preview()
 
-    FIXED_HEADERS = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name", "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark 1", "Remark 2", "Remark 3"]
+    FIXED_HEADERS = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name", "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark"]
+
+    def generate_outputs(self, profile_name='default'):
+        print(f"DEBUG: generate_outputs called with profile_name: {profile_name}")
+        if not self.current_parser:
+            print(f"DEBUG: generate_outputs: Restoring parser for {profile_name}")
+            self.current_parser = self._get_parser(profile_name)
+            
+        self._persist_formatted_data()
+        # Generate default XLSX output
+        filename = self.generate_custom_output(profile_name=profile_name, file_format='xlsx')
+        return [filename]
 
     def generate_custom_output(self, profile_name=None, custom_filename=None, file_format='xlsx'):
+        # Don't call _persist_formatted_data() here - it overwrites the data saved via save_overwrite
+        # The formatted data was already saved to DB via save_overwrite API
+
+        print(f"DEBUG: generate_custom_output called with profile={profile_name}, filename={custom_filename}, format={file_format}")
+        
         if getattr(sys, 'frozen', False):
              base_dir = os.path.dirname(sys.executable)
              output_dir = os.path.join(base_dir, 'output')
         else:
-             output_dir = os.path.join(self._get_base_path(), 'static', 'output')
+             output_dir = os.path.join(self._get_base_path(), 'output')
+        print(f"DEBUG: generate_custom_output: output_dir={output_dir}")
+        if not os.path.exists(output_dir):
+             os.makedirs(output_dir)
 
-        os.makedirs(output_dir, exist_ok=True)
-
-        if custom_filename:
-             base_name = os.path.splitext(custom_filename)[0]
-        else:
+        if not custom_filename:
              base_name = f"Formatted_Output_{profile_name}" if profile_name else "Processed_Output"
+             output_path = os.path.join(output_dir, f"{base_name}.{file_format}")
+        else:
+             output_path = os.path.join(output_dir, custom_filename)
+        
+        print(f"DEBUG: generate_custom_output: output_path={output_path}")
 
         ext = file_format.lower()
         if ext not in ['xlsx', 'csv', 'pdf', 'xls', 'xlsm']:
-            ext = 'xlsx'
+            ext = 'xls'
+        
+        if not custom_filename:
+            base_name = f"Formatted_Output_{profile_name}" if profile_name else "Processed_Output"
+        else:
+            # Extract base name from custom_filename (remove extension if present)
+            base_name = custom_filename.rsplit('.', 1)[0] if custom_filename else "Processed_Output"
+        
         filename = base_name + f".{ext}"
         output_path = os.path.join(output_dir, filename)
 
         if not self.formatted_headers:
-             self._recover_formatted_headers()
+            self._recover_formatted_headers()
 
         if not self.formatted_headers:
-             self.formatted_headers = self.FIXED_HEADERS
+            self.formatted_headers = self.FIXED_HEADERS
 
         query_cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
 
         try:
-             self.cursor.execute(f"SELECT 1 FROM {self.formatted_table_name} LIMIT 1")
-             self.cursor.execute(f"SELECT {query_cols} FROM {self.formatted_table_name}")
-             formatted_rows = list(self.cursor.fetchall())
-             formatted_headers = list(self.formatted_headers)
+            self.cursor.execute(f"SELECT 1 FROM {self.formatted_table_name} LIMIT 1")
+            self.cursor.execute(f"SELECT {query_cols} FROM {self.formatted_table_name}")
+            formatted_rows = list(self.cursor.fetchall())
+            formatted_headers = list(self.formatted_headers)
+            print(f"DEBUG: generate_custom_output: fetched {len(formatted_rows)} rows from DB")
+
+            # Apply ERP compatibility cleaning
+            cleaned_rows = []
+            for row in formatted_rows:
+                new_row = list(row)
+                # Force Sl. No to float if numeric
+                try:
+                    if new_row[0]: new_row[0] = float(str(new_row[0]).strip())
+                except: pass
+
+                # Clean strings: remove Hex artifacts and normalize line breaks
+                for i in range(len(new_row)):
+                    if isinstance(new_row[i], str):
+                        # Strip _x005F_x000D_ and internal newlines
+                        new_row[i] = new_row[i].replace('_x005F_x000D_', ' ')
+                        new_row[i] = new_row[i].replace('\r', ' ').replace('\n', ' ')
+                        new_row[i] = ' '.join(new_row[i].split()) # Remove double spaces
+                cleaned_rows.append(new_row)
+            formatted_rows = cleaned_rows
         except Exception as e:
-             formatted_headers = list(self.formatted_headers)
-             formatted_rows = []
+            print(f"DEBUG: Exception fetching formatted data: {e}")
+            formatted_headers = list(self.formatted_headers)
+            formatted_rows = []
 
         if ext == 'csv':
             with open(output_path, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f)
+                # Force CRLF and Quoting for ERP compatibility
+                writer = csv.writer(f, lineterminator='\r\n', quoting=csv.QUOTE_ALL)
                 for _ in range(4):
                     writer.writerow([])
                 writer.writerow(formatted_headers)
@@ -209,38 +268,94 @@ class LogicEngine:
             self._generate_pdf(output_path, formatted_headers, formatted_rows, profile_name)
         elif ext == 'xls':
             try:
+                # Prepare data with pandas first for numeric cleaning
                 df = pd.DataFrame(formatted_rows, columns=formatted_headers)
-                df.to_excel(output_path, index=False, startrow=4)
+                for i in [5, 6]:
+                    if i < len(formatted_headers):
+                        col_name = formatted_headers[i]
+                        df[col_name] = pd.to_numeric(df[col_name].astype(str).str.replace(',', '').str.strip(), errors='coerce')
+                
+                rows_to_write = df.values.tolist()
+                
+                template_path = os.path.join(self._get_base_path(), 'templates', 'output.xls')
+                print(f"DEBUG: template_path={template_path}, exists={os.path.exists(template_path)}")
+                if os.path.exists(template_path):
+                    try:
+                        import xlrd
+                        from xlutils.copy import copy
+                        # formatting_info=True allows preserving styles during copy
+                        rb = xlrd.open_workbook(template_path, formatting_info=True)
+                        wb = copy(rb)
+                        ws = wb.get_sheet(0)
+                        
+                        # Write data starting from A6 (Row Index 5)
+                        for r_idx, row_data in enumerate(rows_to_write):
+                            for c_idx, val in enumerate(row_data):
+                                if c_idx < 9: # Only A-I (9 columns)
+                                    ws.write(r_idx + 5, c_idx, val)
+                        wb.save(output_path)
+                    except Exception as e:
+                        print(f"DEBUG: xlutils copy failed: {e}")
+                        # Fallback
+                        with pd.ExcelWriter(output_path, engine='xlwt') as writer:
+                            writer.book.owner = "dell"
+                            df.to_excel(writer, index=False, startrow=4, sheet_name='Sheet1')
+                else:
+                    # Fallback to standard creation if template missing
+                    print(f"DEBUG: Template not found at {template_path}, using standard creation")
+                    with pd.ExcelWriter(output_path, engine='xlwt') as writer:
+                        writer.book.owner = "dell"
+                        df.to_excel(writer, index=False, startrow=4, sheet_name='Sheet1')
             except Exception as e:
-                print(f"Failed to export XLS (xlwt missing?): {e}")
+                print(f"Failed to export XLS: {e}")
+
         elif ext in ['xlsx', 'xlsm']:
             from openpyxl.styles import numbers
 
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Data"
+            # Use pandas for faster data processing if possible
+            try:
+                print(f"DEBUG: generate_custom_output: Creating DataFrame with {len(formatted_rows)} rows")
+                df = pd.DataFrame(formatted_rows, columns=formatted_headers)
+                # Convert Invoice Balance and Amt To Adjust to numbers (indices 5 and 6)
+                for i in [5, 6]:
+                    col_name = formatted_headers[i]
+                    df[col_name] = pd.to_numeric(df[col_name].astype(str).str.replace(',', '').str.strip(), errors='coerce')
 
-            for _ in range(4):
-                ws.append([])
-
-            ws.append(formatted_headers)
-            for r in formatted_rows:
-                ws.append(r)
-
-            # Convert Invoice Balance and Amt To Adjust to numbers
-            for row in ws.iter_rows(min_row=5, max_row=ws.max_row):
-                for cell in row:
-                    if cell.column_letter in ['F', 'G'] and cell.value:
-                        try:
-                            val_str = str(cell.value).replace(',', '').strip()
-                            if val_str.replace('.', '').replace('-', '').isdigit() or val_str.replace('.', '').replace('-', '').isdigit():
-                                cell.value = float(val_str)
+                # Write to Excel
+                with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, startrow=4, sheet_name='Data')
+                    
+                    # Apply numeric formatting to columns F and G
+                    ws = writer.sheets['Data']
+                    for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=6, max_col=7):
+                        for cell in row:
+                            if cell.value is not None:
                                 cell.number_format = numbers.FORMAT_NUMBER_00
-                        except:
-                            pass
+            except Exception as e:
+                # Fallback to manual openpyxl if pandas fails
+                print(f"Pandas export failed, using fallback: {e}")
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Data"
+                for _ in range(4): ws.append([])
+                ws.append(formatted_headers)
+                for r in formatted_rows:
+                    new_row = list(r)
+                    for i in [5, 6]:
+                        try:
+                            val = str(new_row[i]).replace(',', '').strip()
+                            if val: new_row[i] = float(val)
+                        except: pass
+                    ws.append(new_row)
+                
+                for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=6, max_col=7):
+                    for cell in row:
+                        if isinstance(cell.value, (int, float)):
+                            cell.number_format = numbers.FORMAT_NUMBER_00
+                wb.save(output_path)
+                print(f"DEBUG: XLS file saved using template at {template_path}")
 
-            wb.save(output_path)
-
+        print(f"DEBUG: returning filename={filename}")
         return filename
 
     def _generate_pdf(self, output_path, headers, rows, profile_name):
@@ -366,16 +481,18 @@ class LogicEngine:
         return True
 
     def overwrite_formatted_data(self, rows):
-        if not self.formatted_headers:
-             self._recover_formatted_headers()
+        print(f"DEBUG: overwrite_formatted_data called with {len(rows) if rows else 0} rows")
+        
+        # Always use the correct 11 headers - don't recover from DB which might have old schema
+        self.formatted_headers = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name", "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark 1", "Remark 2", "Remark 3"]
 
-        if not self.formatted_headers:
-             self.formatted_headers = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name", "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark 1", "Remark 2", "Remark 3"]
+        print(f"DEBUG: overwrite_formatted_data using {len(self.formatted_headers)} headers")
 
         self._create_formatted_table(self.formatted_headers)
         if rows:
             placeholder = ','.join(['?']*len(self.formatted_headers))
             cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
+            print(f"DEBUG: insert with {len(self.formatted_headers)} cols, row has {len(rows[0]) if rows else 0} values")
             self.cursor.executemany(f"INSERT INTO {self.formatted_table_name} ({cols}) VALUES ({placeholder})", rows)
         self.conn.commit()
 
@@ -466,9 +583,13 @@ class LogicEngine:
         rows = self._clean_numeric_columns(rows)
 
         if rows:
-            placeholder = ','.join(['?']*len(self.headers))
+            # Pad rows to match the new headers (which include the extra columns)
+            num_cols = len(self.headers)
+            padded_rows = [list(r) + [""] * (num_cols - len(r)) for r in rows]
+            
+            placeholder = ','.join(['?']*num_cols)
             cols = ', '.join([f'"{h}"' for h in self.headers])
-            self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", rows)
+            self.cursor.executemany(f"INSERT INTO {self.table_name} ({cols}) VALUES ({placeholder})", padded_rows)
         self.conn.commit()
 
     def _clean_numeric_columns(self, rows):
@@ -567,7 +688,14 @@ class LogicEngine:
         return new_headers
 
     def _create_table(self, headers):
-        cols = [f'"{h}" TEXT' for h in headers]
+        # Ensure the required mapping and remark columns are present
+        required_cols = ["Invoice Mapping", "Remark 1", "Remark 2", "Remark 3"]
+        full_headers = list(headers)
+        for rc in required_cols:
+            if rc not in full_headers:
+                full_headers.append(rc)
+        
+        cols = [f'"{h}" TEXT' for h in full_headers]
         try:
             self.cursor.execute(f"DROP TABLE IF EXISTS {self.table_name}")
             self.conn.commit()
@@ -576,6 +704,73 @@ class LogicEngine:
 
         self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {self.table_name} ({', '.join(cols)})")
         self.conn.commit()
+        
+        # Update internal headers to include the new columns for UI display
+        self.headers = full_headers
+
+    def combine_remarks(self, invoice_col, remark1_col=None, remark2_col=None, remark3_col=None):
+        try:
+            # 1. Fetch all data
+            self.cursor.execute(f'SELECT rowid, * FROM {self.table_name}')
+            rows = [dict(r) for r in self.cursor.fetchall()]
+            if not rows: return True
+
+            # 2. Group remarks by invoice for each remark column
+            from collections import defaultdict
+            invoice_remarks1 = defaultdict(list)
+            invoice_remarks2 = defaultdict(list)
+            invoice_remarks3 = defaultdict(list)
+            
+            # Group remarks for each column
+            for row in rows:
+                inv = str(row.get(invoice_col, "")).strip()
+                if inv and inv != "nan":
+                    # Remark 1
+                    if remark1_col:
+                        rem1 = str(row.get(remark1_col, "")).strip()
+                        if rem1 and rem1 != "nan" and rem1 not in invoice_remarks1[inv]:
+                            invoice_remarks1[inv].append(rem1)
+                    # Remark 2
+                    if remark2_col:
+                        rem2 = str(row.get(remark2_col, "")).strip()
+                        if rem2 and rem2 != "nan" and rem2 not in invoice_remarks2[inv]:
+                            invoice_remarks2[inv].append(rem2)
+                    # Remark 3
+                    if remark3_col:
+                        rem3 = str(row.get(remark3_col, "")).strip()
+                        if rem3 and rem3 != "nan" and rem3 not in invoice_remarks3[inv]:
+                            invoice_remarks3[inv].append(rem3)
+
+            # 3. Update the first occurrence of each invoice with the combined remarks
+            processed_invoices = set()
+            for row in rows:
+                inv = str(row.get(invoice_col, "")).strip()
+                row_id = row['rowid']
+                
+                if inv and inv not in processed_invoices:
+                    # Combine remarks for each column
+                    combined_rem1 = " | ".join(invoice_remarks1[inv]) if inv in invoice_remarks1 else ""
+                    combined_rem2 = " | ".join(invoice_remarks2[inv]) if inv in invoice_remarks2 else ""
+                    combined_rem3 = " | ".join(invoice_remarks3[inv]) if inv in invoice_remarks3 else ""
+                    
+                    # Update both the audit columns AND the original columns
+                    self.cursor.execute(
+                        f'UPDATE {self.table_name} SET "Invoice Mapping" = ?, "Remark 1" = ?, "Remark 2" = ?, "Remark 3" = ?, "{invoice_col}" = ? WHERE rowid = ?',
+                        (inv, combined_rem1, combined_rem2, combined_rem3, inv, row_id)
+                    )
+                    processed_invoices.add(inv)
+                elif inv:
+                    # For duplicate rows, we still map the invoice for consistency
+                    self.cursor.execute(
+                        f'UPDATE {self.table_name} SET "Invoice Mapping" = ?, "{invoice_col}" = ? WHERE rowid = ?',
+                        (inv, inv, row_id)
+                    )
+
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Combine Remarks Error: {e}")
+            return False
 
     def get_preview(self, limit=None):
         try:

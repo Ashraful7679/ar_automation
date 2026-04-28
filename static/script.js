@@ -351,11 +351,14 @@ function applyPipeline(stage = 'full', shouldSave = false) {
         const splitColIndex = 7; // CustomerCode column (hardcoded)
         const groups = {};
         pipelineRows.forEach(row => {
+            // Skip rows with no invoice number (column 1)
+            if (!row[1] || !row[1].toString().trim()) return;
+            
             const key = (row[splitColIndex] || "Uncategorized").toString().trim();
             if (!groups[key]) groups[key] = [];
             groups[key].push([...row]);
         });
-        Object.values(groups).forEach(grp => {
+        Object.values(groups).forEach((grp, gIdx) => {
             grp.forEach((r, i) => r[0] = i + 1);
         });
         splitGroups = groups;
@@ -654,22 +657,74 @@ async function reloadRawData() {
 
 function populateFilterColumns(headers) {
     const sel = document.getElementById('filter-column');
+    const combineInv = document.getElementById('combine-inv-col');
+    const combineRem1 = document.getElementById('combine-rem1-col');
+    const combineRem2 = document.getElementById('combine-rem2-col');
+    const combineRem3 = document.getElementById('combine-rem3-col');
+    
     if (!sel) return;
     
-    // Save current selection
+    // Save current selections
     const currentSel = sel.value;
+    const currentInv = combineInv ? combineInv.value : "";
+    const currentRem1 = combineRem1 ? combineRem1.value : "";
+    const currentRem2 = combineRem2 ? combineRem2.value : "";
+    const currentRem3 = combineRem3 ? combineRem3.value : "";
     
     sel.innerHTML = '<option value="">Select Column...</option>';
+    if (combineInv) combineInv.innerHTML = '<option value="">Invoice Column...</option>';
+    if (combineRem1) combineRem1.innerHTML = '<option value="">Remark 1 Column...</option>';
+    if (combineRem2) combineRem2.innerHTML = '<option value="">Remark 2 Column...</option>';
+    if (combineRem3) combineRem3.innerHTML = '<option value="">Remark 3 Column...</option>';
+
     headers.forEach(h => {
         if (h === '_id') return;
+        
+        // Filter dropdown
         const opt = document.createElement('option');
         opt.value = h;
         opt.text = h;
         sel.appendChild(opt);
+
+        // Combine Invoice dropdown
+        if (combineInv) {
+            const optInv = document.createElement('option');
+            optInv.value = h;
+            optInv.text = h;
+            combineInv.appendChild(optInv);
+        }
+
+        // Combine Remark 1 dropdown
+        if (combineRem1) {
+            const optRem1 = document.createElement('option');
+            optRem1.value = h;
+            optRem1.text = h;
+            combineRem1.appendChild(optRem1);
+        }
+
+        // Combine Remark 2 dropdown
+        if (combineRem2) {
+            const optRem2 = document.createElement('option');
+            optRem2.value = h;
+            optRem2.text = h;
+            combineRem2.appendChild(optRem2);
+        }
+
+        // Combine Remark 3 dropdown
+        if (combineRem3) {
+            const optRem3 = document.createElement('option');
+            optRem3.value = h;
+            optRem3.text = h;
+            combineRem3.appendChild(optRem3);
+        }
     });
     
     // Restore if exists
     if (currentSel) sel.value = currentSel;
+    if (currentInv && combineInv) combineInv.value = currentInv;
+    if (currentRem1 && combineRem1) combineRem1.value = currentRem1;
+    if (currentRem2 && combineRem2) combineRem2.value = currentRem2;
+    if (currentRem3 && combineRem3) combineRem3.value = currentRem3;
 }
 
 async function updateFilterValues() {
@@ -743,6 +798,45 @@ async function applyRawFilter() {
     } catch (e) {
         console.error(e);
         updateStatus("Filtering Error");
+    }
+}
+
+async function combineRawRemarks() {
+    const invCol = document.getElementById('combine-inv-col').value;
+    const rem1Col = document.getElementById('combine-rem1-col').value;
+    const rem2Col = document.getElementById('combine-rem2-col').value;
+    const rem3Col = document.getElementById('combine-rem3-col').value;
+    
+    if (!invCol) {
+        alert("Please select an Invoice column.");
+        return;
+    }
+    
+    updateStatus("Combining remarks for duplicate invoices...");
+    try {
+        const res = await fetch('/api/combine_remarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                invoice_col: invCol, 
+                remark1_col: rem1Col,
+                remark2_col: rem2Col,
+                remark3_col: rem3Col
+            })
+        });
+        const data = await res.json();
+        
+        if (data.preview) {
+            updateStatus("Remarks combined. Reloading preview...");
+            await reloadRawData();
+            alert("Remarks combined successfully.");
+        } else {
+            alert("Error: " + (data.error || "Unknown error"));
+            updateStatus("Combination failed.");
+        }
+    } catch (e) {
+        console.error(e);
+        updateStatus("Combination Error");
     }
 }
 
@@ -1513,7 +1607,7 @@ async function runProcess() {
         const res = await fetch('/api/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile: {} })
+            body: JSON.stringify({ profile: document.getElementById('format-select').value })
         });
         const data = await res.json();
         consoleLog.innerHTML += `<p>> ${data.message}</p>`;
@@ -1558,13 +1652,17 @@ async function prepareFile() {
 
         if (splitGroups && Object.keys(splitGroups).length > 0) {
             // MULTI FILE EXPORT
-            updateStatus(`Generating ${Object.keys(splitGroups).length} files...`);
+            const keys = Object.keys(splitGroups);
+            const total = keys.length;
+            updateStatus(`Starting generation of ${total} files...`);
 
-            for (const [key, rows] of Object.entries(splitGroups)) {
-                // Determine Filename
+            for (let i = 0; i < total; i++) {
+                const key = keys[i];
+                const rows = splitGroups[key];
+                
+                updateStatus(`Processing ${i + 1}/${total}: ${key}...`);
+
                 // Determine Filename (Custom Requirement: MathingOfARReceipts-xls_[Code]_[Suffix].xlsx)
-                // Code is the key (CustomerCode)
-                // Suffix: 100->A, 101->B, 102->C
                 let suffix = '';
                 if (key.endsWith('100')) suffix = '_A';
                 else if (key.endsWith('101')) suffix = '_B';
@@ -1572,27 +1670,44 @@ async function prepareFile() {
 
                 const splitFilename = `MathingOfARReceipts-xls_${key}${suffix}`;
 
-                // 1. Save this specific group to DB (Synchronous loop for simplicity/stability)
-                await fetch('/api/save_overwrite', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rows: rows })
-                });
+                try {
+                    // Filter out rows with empty invoice number before saving
+                    const validRows = rows.filter(r => r[1] && r[1].toString().trim());
+                    
+                    // 1. Save this specific group to DB
+                    const saveRes = await fetch('/api/save_overwrite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rows: validRows })
+                    });
+                    
+                    if (!saveRes.ok) throw new Error(`Save failed for ${key}`);
 
-                // 2. Export
-                const exportRes = await fetch('/api/export_custom', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        profile: profile,
-                        format: fileFormat,
-                        filename: splitFilename
-                    })
-                });
+                    // 2. Export
+                    const exportRes = await fetch('/api/export_custom', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            profile: profile,
+                            format: fileFormat,
+                            filename: splitFilename
+                        })
+                    });
+                    
+                    if (!exportRes.ok) {
+                        const errData = await exportRes.json();
+                        throw new Error(`Export failed for ${key}: ${errData.error || 'Unknown error'}`);
+                    }
 
-                const data = await exportRes.json();
-                if (data.file) {
-                    preparedFiles.push({ name: data.file, label: `Download: ${key}` });
+                    const data = await exportRes.json();
+                    if (data.file) {
+                        preparedFiles.push({ name: data.file, label: `Download: ${key}` });
+                    }
+                } catch (err) {
+                    console.error(`Error generating ${key}:`, err);
+                    updateStatus(`Warning: Failed to generate ${key}. Continuing...`);
+                    // Small delay to let the system breathe
+                    await new Promise(r => setTimeout(r, 500));
                 }
             }
 
@@ -1611,12 +1726,17 @@ async function prepareFile() {
                     container.appendChild(btn);
                 });
                 updateStatus(`Generated ${preparedFiles.length} files successfully.`);
+            } else {
+                updateStatus("No files were generated.");
             }
 
         } else if (dataToSave) {
             // SINGLE FILE EXPORT
-            await saveFullData(dataToSave);
+            updateStatus("Saving data to server...");
+            const saved = await saveFullData(dataToSave);
+            if (!saved) throw new Error("Could not save data to server.");
 
+            updateStatus("Generating file...");
             const res = await fetch('/api/export_custom', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1626,6 +1746,9 @@ async function prepareFile() {
                     format: fileFormat
                 })
             });
+            
+            if (!res.ok) throw new Error("Server error during export.");
+            
             const data = await res.json();
 
             if (data.file) {
@@ -1642,13 +1765,16 @@ async function prepareFile() {
                 });
                 container.appendChild(btn);
                 updateStatus("File prepared successfully.");
+            } else {
+                throw new Error(data.error || "Unknown export error");
             }
         }
     } catch (e) {
         console.error(e);
         updateStatus("Preparation Error: " + e.message);
     } finally {
-        btnPrepare.disabled = false;
+        const btnPrepare = document.getElementById('btn-prepare');
+        if (btnPrepare) btnPrepare.disabled = false;
     }
 }
 
@@ -1663,7 +1789,6 @@ function executeDownload() {
 window.uploadFile = uploadFile;
 window.checkSheets = checkSheets;
 window.updateStatus = updateStatus;
-window.applyMapping = applyMapping;
 window.saveFullData = saveFullData;
 window.applyPipeline = applyPipeline;
 

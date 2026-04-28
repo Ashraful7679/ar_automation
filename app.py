@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import os
 import shutil
 import time
@@ -26,6 +27,8 @@ else:
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')
 OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
+if not getattr(sys, 'frozen', False):
+    OUTPUT_FOLDER = OUTPUT_FOLDER_STATIC
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'ar_system.db')
 DB_PATH = os.path.join(BASE_DIR, 'session_v2.db')
@@ -243,7 +246,9 @@ def run_process():
         profile = data.get('profile', {})
         
         engine = LogicEngine(DB_PATH)
-        files = engine.generate_outputs(OUTPUT_FOLDER)
+        print(f"DEBUG: Processing with profile: {profile}")
+        files = engine.generate_outputs(profile)
+        print(f"DEBUG: Generated files: {files}")
         
         # Determine Input File (hacky, as LogicEngine might have changed)
         # We can pass input filename from frontend or store in session?
@@ -285,6 +290,32 @@ def export_custom():
         return jsonify({'message': 'Export generated', 'file': filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/combine_remarks', methods=['POST'])
+@login_required
+def combine_remarks():
+    try:
+        data = request.json
+        invoice_col = data.get('invoice_col')
+        remark1_col = data.get('remark1_col')
+        remark2_col = data.get('remark2_col')
+        remark3_col = data.get('remark3_col')
+        
+        if not invoice_col:
+            return jsonify({"error": "Missing Invoice column selection"}), 400
+            
+        engine = LogicEngine(DB_PATH)
+        success = engine.combine_remarks(invoice_col, remark1_col, remark2_col, remark3_col)
+        
+        if success:
+            preview = engine.get_preview()
+            engine.close()
+            return jsonify({"message": "Remarks combined successfully", "preview": preview})
+        else:
+            engine.close()
+            return jsonify({"error": "Failed to combine remarks"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/update_data', methods=['POST'])
 def update_data():
@@ -337,6 +368,9 @@ def save_overwrite():
     try:
         data = request.json
         rows = data.get('rows')
+        print(f"DEBUG: save_overwrite received {len(rows) if rows else 0} rows")
+        if rows and len(rows[0]):
+            print(f"DEBUG: row sample: {rows[0]}")
         
         engine = LogicEngine(DB_PATH)
         engine.overwrite_formatted_data(rows)
@@ -344,6 +378,7 @@ def save_overwrite():
         
         return jsonify({"success": True})
     except Exception as e:
+        print(f"DEBUG: save_overwrite error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -379,6 +414,17 @@ def set_raw_header():
 @app.route('/api/get_raw_preview', methods=['GET'])
 @login_required
 def get_raw_preview():
+    try:
+        engine = LogicEngine(DB_PATH)
+        data = engine.get_preview()
+        engine.close()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/get_preview', methods=['GET'])
+@login_required
+def get_preview():
     try:
         engine = LogicEngine(DB_PATH)
         data = engine.get_preview()

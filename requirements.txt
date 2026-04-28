@@ -9,3 +9,5 @@ fpdf
 werkzeug
 python-dotenv
 pdfplumber
+xlwt
+xlutils

@@ -77,6 +77,7 @@
                             <option value="SOS">INTERNATIONAL SOS</option>
                             <option value="MSH">MSH INTERNATIONAL</option>
                             <option value="NEXT_CARE">NEXT CARE</option>
+                            <option value="HEALTH_360">HEALTH 360</option>
                             <option value="PAYADVICE">PAYADVICE</option>
                             <option value="WORLDWIDE">WORLDWIDE INSURANCE</option>
 
@@ -117,39 +118,77 @@
                                 <div class="collapsible-content">
                                     <!-- Cleaning Toolbar -->
                                     <div id="raw-toolbar"
-                                        style="padding: 8px; background: #1F2937; display: flex; gap: 10px; border-bottom: 1px solid #374151;">
-                                        <button onclick="setRawHeader()"
-                                            style="background:#3B82F6; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
-                                            Set Selected as Header
-                                        </button>
-                                        <button onclick="deleteRawRows()"
-                                            style="background:#EF4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
-                                            Delete Selected Rows
-                                        </button>
-                                        <button onclick="setAsLastRow()"
-                                            style="background:#F59E0B; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
-                                            Set Selected as Last Row
-                                        </button>
-                                        
-                                        <!-- Filtering Section -->
-                                        <div style="display: flex; gap: 8px; align-items: center; border-left: 1px solid #374151; padding-left: 10px; margin-left: 5px;">
-                                            <select id="filter-column" onchange="updateFilterValues()"
-                                                style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 4px; font-size: 0.75rem; min-width: 120px;">
-                                                <option value="">Select Column...</option>
-                                            </select>
-                                            <select id="filter-value"
-                                                style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 4px; font-size: 0.75rem; min-width: 120px;">
-                                                <option value="">Select Value...</option>
-                                            </select>
+                                        style="padding: 8px; background: #1F2937; display: flex; gap: 10px; border-bottom: 1px solid #374151; flex-wrap: wrap;">
+                                        <!-- 3 Action Buttons - Stacked -->
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            <button onclick="setRawHeader()"
+                                                style="background:#3B82F6; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:0.65rem; cursor:pointer;">
+                                                Set Selected as Header
+                                            </button>
+                                            <button onclick="deleteRawRows()"
+                                                style="background:#EF4444; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:0.65rem; cursor:pointer;">
+                                                Delete Selected Rows
+                                            </button>
+                                            <button onclick="setAsLastRow()"
+                                                style="background:#F59E0B; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:0.65rem; cursor:pointer;">
+                                                Set Selected as Last Row
+                                            </button>
+                                        </div>
+
+                                        <!-- Separator -->
+                                        <div style="width: 1px; background: #374151;"></div>
+
+                                        <!-- Combine Remarks Section -->
+                                        <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid #374151; padding: 6px; border-radius: 4px;">
+                                            <small style="color:#9CA3AF; font-size:0.6rem; font-weight:bold;">Combine Remarks</small>
+                                            <div style="display: flex; gap: 6px;">
+                                                <select id="combine-inv-col"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Invoice...</option>
+                                                </select>
+                                                <select id="combine-rem1-col"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Remark 1...</option>
+                                                </select>
+                                                <select id="combine-rem2-col"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Remark 2...</option>
+                                                </select>
+                                                <select id="combine-rem3-col"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Remark 3...</option>
+                                                </select>
+                                            </div>
+                                            <button onclick="combineRawRemarks()"
+                                                style="background:#8B5CF6; color:white; border:none; padding:2px 8px; border-radius:4px; font-size:0.65rem; cursor:pointer;">
+                                                Combine
+                                            </button>
+                                        </div>
+
+                                        <!-- Separator -->
+                                        <div style="width: 1px; background: #374151;"></div>
+
+                                        <!-- Filter Data Section -->
+                                        <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid #374151; padding: 6px; border-radius: 4px;">
+                                            <small style="color:#9CA3AF; font-size:0.6rem; font-weight:bold;">Filter Data</small>
+                                            <div style="display: flex; gap: 6px;">
+                                                <select id="filter-column" onchange="updateFilterValues()"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Column...</option>
+                                                </select>
+                                                <select id="filter-value"
+                                                    style="background: #111827; color: white; border: 1px solid #4B5563; border-radius: 4px; padding: 2px; font-size: 0.65rem; width: 90px;">
+                                                    <option value="">Value...</option>
+                                                </select>
+                                            </div>
                                             <button onclick="applyRawFilter()"
-                                                style="background:#10B981; color:white; border:none; padding:4px 12px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight: 500;">
+                                                style="background:#EF4444; color:white; border:none; padding:2px 8px; border-radius:4px; font-size:0.65rem; cursor:pointer;">
                                                 Filter
                                             </button>
                                         </div>
-                                        
+
                                         <span style="flex:1;"></span>
-                                        <small style="color:#9CA3AF; align-self: center;">Select rows using checkboxes
-                                            below</small>
+                                        <small style="color:#9CA3AF; align-self: center; font-size: 0.6rem;">Select rows using checkboxes below</small>
                                     </div>
                                     <div class="table-wrapper">
                                         <table id="raw-preview-table"></table>
@@ -331,7 +370,7 @@
                                                 style="flex: 1; padding: 8px; background: #1F2937; border: 1px solid #374151; color: white; border-radius: 4px; font-size: 0.8rem;">
                                                 <option value="xlsx">XLSX</option>
                                                 <option value="xlsm">XLSM</option>
-                                                <option value="xls">XLS</option>
+                                                <option value="xls" selected>XLS</option>
                                                 <option value="csv">CSV</option>
                                                 <option value="pdf">PDF</option>
                                             </select>
