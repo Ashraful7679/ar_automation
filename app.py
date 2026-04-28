@@ -26,9 +26,8 @@ else:
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')
-OUTPUT_FOLDER_STATIC = os.path.join(RESOURCE_DIR, 'static', 'output')
-if not getattr(sys, 'frozen', False):
-    OUTPUT_FOLDER = OUTPUT_FOLDER_STATIC
+# Ensure output directory exists
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'ar_system.db')
 DB_PATH = os.path.join(BASE_DIR, 'session_v2.db')
@@ -82,11 +81,10 @@ def get_sheets():
         if not (file.filename.lower().endswith('.xlsx') or file.filename.lower().endswith('.xls') or file.filename.lower().endswith('.xlsm')):
             return jsonify({"sheets": [], "is_excel": False})
         
-        # Generate unique filename to avoid permission errors on locked files
+        # Fixed filename to avoid accumulation
         filename = file.filename
         name, ext = os.path.splitext(filename)
-        import time
-        unique_filename = f"{name}_{int(time.time())}{ext}"
+        unique_filename = f"current_upload_meta{ext}"
         filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
         file.save(filepath)
         
@@ -175,16 +173,12 @@ def upload():
         if file.filename == '':
             return jsonify({"error": "No selected file"}), 400
         
-        # Generate unique filename to avoid permission errors on locked files
+        # Fixed filename to avoid accumulation
         filename = file.filename
         name, ext = os.path.splitext(filename)
-        import time
-        unique_filename = f"{name}_{int(time.time())}{ext}"
+        unique_filename = f"current_upload{ext}"
         filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
         file.save(filepath)
-        
-        # Note: logic_engine now handles table clearing, so we don't need to delete the file
-        # which prevents WinError 32
         
         profile = request.form.get('profile', 'default')
         sheet_name = request.form.get('sheet', None)
@@ -230,11 +224,6 @@ def save_history(input_file, output_file):
             if oldest:
                 db.session.delete(oldest)
                 db.session.commit()
-                # Determine if we should delete file from disk? 
-                # User said "system should save the last 10 input files". 
-                # So we should delete older ones to save space?
-                # For now, let's just track in DB. Logic to delete actual files is complex (shared inputs?)
-                pass
     except Exception as e:
         print(f"History Save Error: {e}")
 
@@ -250,14 +239,7 @@ def run_process():
         files = engine.generate_outputs(profile)
         print(f"DEBUG: Generated files: {files}")
         
-        # Determine Input File (hacky, as LogicEngine might have changed)
-        # We can pass input filename from frontend or store in session?
-        # LogicEngine doesn't track filename implicitly unless we modified it.
-        # But `get_sheets` saves to uploads.
-        # Let's assume the last uploaded file.
-        # Ideally, frontend sends `input_filename`.
-        
-        input_filename = "Input_File.xlsx" # Placeholder or need to fetch
+        input_filename = "Input_File.xlsx" # Placeholder
         if files:
             save_history(input_filename, files[0])
             
@@ -267,24 +249,19 @@ def run_process():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-
 @app.route('/api/export_custom', methods=['POST'])
 @login_required
 def export_custom():
     try:
         data = request.json
         profile = data.get('profile', 'default')
-        custom_filename = data.get('filename') # Support Custom Filename
+        custom_filename = data.get('filename')
         file_format = data.get('format', 'xlsx')
         
         engine = LogicEngine(DB_PATH)
         filename = engine.generate_custom_output(profile, custom_filename, file_format)
         engine.close()
         
-        # Save history for direct export too?
-        # Maybe? User said "last 10 input files... along with output".
-        # If export is the main action, capture it.
         save_history("Uploaded_File.xlsx", filename)
         
         return jsonify({'message': 'Export generated', 'file': filename})
@@ -329,16 +306,6 @@ def update_data():
              return jsonify({"error": "Missing row_id or col_index"}), 400
              
         engine = LogicEngine(DB_PATH)
-        # Backend Index Adjustment handled in JS or LogicEngine?
-        # LogicEngine.update_formatted_cell expects index into formatted_headers.
-        # Frontend sends Visible Index (0 based).
-        # Frontend rowData = row.slice(1). Row[0] is _id.
-        # So Frontend Index 0 maps to Row Index 1.
-        # Row Index 1 corresponds to formatted_headers[0].
-        # LogicEngine expects index into formatted_headers.
-        # So Frontend Index 0 -> logic_engine index 0.
-        # Therefore, we use int(col_index) directly.
-        
         success = engine.update_formatted_cell(row_id, int(col_index), new_value)
         engine.close()
         
@@ -350,7 +317,7 @@ def update_data():
 def update_data_batch():
     try:
         data = request.json
-        updates = data.get('updates') # list of {row_id, col_index, value}
+        updates = data.get('updates')
         
         if not updates:
              return jsonify({"success": True})
@@ -368,9 +335,6 @@ def save_overwrite():
     try:
         data = request.json
         rows = data.get('rows')
-        print(f"DEBUG: save_overwrite received {len(rows) if rows else 0} rows")
-        if rows and len(rows[0]):
-            print(f"DEBUG: row sample: {rows[0]}")
         
         engine = LogicEngine(DB_PATH)
         engine.overwrite_formatted_data(rows)
@@ -378,16 +342,14 @@ def save_overwrite():
         
         return jsonify({"success": True})
     except Exception as e:
-        print(f"DEBUG: save_overwrite error: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/delete_raw_rows', methods=['POST'])
 @login_required
 def delete_raw_rows():
     try:
         data = request.json
-        row_ids = data.get('row_ids') # List of IDs
+        row_ids = data.get('row_ids')
         
         engine = LogicEngine(DB_PATH)
         success = engine.delete_raw_rows(row_ids)
@@ -409,7 +371,6 @@ def set_raw_header():
         return jsonify({"success": success})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/get_raw_preview', methods=['GET'])
 @login_required
@@ -433,7 +394,16 @@ def get_preview():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+@app.route('/api/get_formatted_preview', methods=['GET'])
+@login_required
+def get_formatted_preview():
+    try:
+        engine = LogicEngine(DB_PATH)
+        data = engine.get_formatted_preview()
+        engine.close()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # --- Settings API ---
 from settings_manager import update_profile_section, get_profile_settings, load_settings, save_settings
@@ -466,16 +436,12 @@ def get_settings_api():
             return jsonify({"error": "Missing profile"}), 400
             
         settings = get_profile_settings(profile)
-        print(f"DEBUG: get_settings for {profile}, section {section}")
         
         if section:
             settings = settings.get(section, {})
-        
-        print(f"DEBUG: Returning {len(settings)} items")
             
         return jsonify({"success": True, "settings": settings})
     except Exception as e:
-        print(f"DEBUG: get_settings Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/get_unique_values', methods=['POST'])
@@ -519,7 +485,7 @@ def delete_template():
     try:
         data = request.json
         profile = data.get('profile', '_TEMPLATES_')
-        section = data.get('section') # 'mapping' or 'rules'
+        section = data.get('section')
         name = data.get('name')
         
         if not section or not name:
@@ -539,7 +505,6 @@ def delete_template():
             return jsonify({"success": True, "message": f"Template '{name}' deleted"})
         else:
             return jsonify({"error": "Template not found"}), 404
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -550,7 +515,6 @@ def admin_panel():
 @app.route('/download_file/<path:filename>')
 def download_file(filename):
     return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

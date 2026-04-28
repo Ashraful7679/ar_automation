@@ -136,74 +136,107 @@ class LogicEngine:
 
         self.cursor.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
-        if ext == '.pdf':
-            self.current_parser = self._get_parser(profile_name)
-            if self.current_parser:
-                self._run_parser(self.current_parser, file_path)
-                self._persist_formatted_data()
+        try:
+            if ext == '.pdf':
+                self.current_parser = self._get_parser(profile_name)
+                if self.current_parser:
+                    self._run_parser(self.current_parser, file_path)
+                    self._persist_formatted_data()
+                else:
+                    self._load_pdf(file_path)
+            elif ext == '.csv':
+                self._load_csv(file_path)
+            elif ext in ['.xlsx', '.xlsm']:
+                self._load_excel(file_path, sheet_name=sheet_name)
+            elif ext == '.xls':
+                self._load_xls(file_path, sheet_name=sheet_name)
             else:
-                self._load_pdf(file_path)
-            return
-
-        elif ext == '.csv':
-            self._load_csv(file_path)
-        elif ext in ['.xlsx', '.xlsm']:
-            self._load_excel(file_path, sheet_name)
-        elif ext == '.xls':
-            self._load_xls(file_path, sheet_name)
-        elif ext == '.pdf':
-            self._load_pdf(file_path)
-        else:
-            raise ValueError(f"Unsupported file type: {ext}")
+                raise ValueError(f"Unsupported file type: {ext}")
+        finally:
+            if os.path.exists(file_path) and "uploads" in file_path:
+                try:
+                    os.remove(file_path)
+                    print(f"DEBUG: Deleted uploaded file {file_path}")
+                except Exception as e:
+                    print(f"WARNING: Could not delete uploaded file {file_path}: {e}")
 
     def get_formatted_preview(self):
-        if self.current_parser:
+        # Always try to fetch from formatted_table first
+        try:
             placeholders = ', '.join([f'"{h}"' for h in self.formatted_headers])
             self.cursor.execute(f"SELECT rowid, {placeholders} FROM {self.formatted_table_name}")
             rows = self.cursor.fetchall()
-
-            return {
-                "headers": ["_id"] + self.formatted_headers,
-                "rows": [list(r) for r in rows]
-            }
-        else:
-            return self.get_preview()
+            
+            if rows:
+                return {
+                    "headers": ["_id"] + self.formatted_headers,
+                    "rows": [list(r) for r in rows]
+                }
+        except Exception as e:
+            print(f"DEBUG: get_formatted_preview error: {e}")
+        
+        # Fallback to parser/raw only if formatted table is EMPTY
+        return self.get_preview()
 
     FIXED_HEADERS = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name", "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark"]
 
     def generate_outputs(self, profile_name='default'):
-        print(f"DEBUG: generate_outputs called with profile_name: {profile_name}")
-        if not self.current_parser:
-            print(f"DEBUG: generate_outputs: Restoring parser for {profile_name}")
-            self.current_parser = self._get_parser(profile_name)
-            
-        self._persist_formatted_data()
-        # Generate default XLSX output
-        filename = self.generate_custom_output(profile_name=profile_name, file_format='xlsx')
-        return [filename]
+        """
+        Main entry point for "Run Process".
+        Splits data by CustomerCode and generates separate files.
+        """
+        print(f"DEBUG: generate_outputs called for profile: {profile_name}")
+        
+        # Ensure we have data
+        self.cursor.execute(f"SELECT COUNT(*) FROM {self.formatted_table_name}")
+        count = self.cursor.fetchone()[0]
+        if count == 0:
+            print("DEBUG: generate_outputs: Table is empty, nothing to process.")
+            return []
 
-    def generate_custom_output(self, profile_name=None, custom_filename=None, file_format='xlsx'):
-        # Don't call _persist_formatted_data() here - it overwrites the data saved via save_overwrite
-        # The formatted data was already saved to DB via save_overwrite API
+        if not self.formatted_headers:
+            self._recover_formatted_headers()
 
-        print(f"DEBUG: generate_custom_output called with profile={profile_name}, filename={custom_filename}, format={file_format}")
+        # Find CustomerCode index
+        cc_idx = -1
+        try:
+            cc_idx = self.formatted_headers.index("CustomerCode")
+        except ValueError:
+            print("WARNING: CustomerCode column not found in headers")
+            filename = self.generate_custom_output(profile_name=profile_name, file_format='xlsx')
+            return [filename]
+
+        # Get unique CustomerCodes
+        self.cursor.execute(f"SELECT DISTINCT \"CustomerCode\" FROM {self.formatted_table_name}")
+        codes = [r[0] for r in self.cursor.fetchall() if r[0]]
+        
+        if not codes:
+            filename = self.generate_custom_output(profile_name=profile_name, file_format='xlsx')
+            return [filename]
+
+        generated_files = []
+        for code in codes:
+            filename = self.generate_custom_output(
+                profile_name=profile_name, 
+                custom_filename=f"MathingOfARReceipts_{code}",
+                file_format='xls',
+                customer_code=code
+            )
+            generated_files.append(filename)
+
+        return generated_files
+
+    def generate_custom_output(self, profile_name=None, custom_filename=None, file_format='xlsx', customer_code=None):
+        print(f"DEBUG: generate_custom_output called with profile={profile_name}, filename={custom_filename}, format={file_format}, customer_code={customer_code}")
         
         if getattr(sys, 'frozen', False):
              base_dir = os.path.dirname(sys.executable)
              output_dir = os.path.join(base_dir, 'output')
         else:
              output_dir = os.path.join(self._get_base_path(), 'output')
-        print(f"DEBUG: generate_custom_output: output_dir={output_dir}")
+        
         if not os.path.exists(output_dir):
              os.makedirs(output_dir)
-
-        if not custom_filename:
-             base_name = f"Formatted_Output_{profile_name}" if profile_name else "Processed_Output"
-             output_path = os.path.join(output_dir, f"{base_name}.{file_format}")
-        else:
-             output_path = os.path.join(output_dir, custom_filename)
-        
-        print(f"DEBUG: generate_custom_output: output_path={output_path}")
 
         ext = file_format.lower()
         if ext not in ['xlsx', 'csv', 'pdf', 'xls', 'xlsm']:
@@ -211,12 +244,20 @@ class LogicEngine:
         
         if not custom_filename:
             base_name = f"Formatted_Output_{profile_name}" if profile_name else "Processed_Output"
+            filename = f"{base_name}.{ext}"
         else:
-            # Extract base name from custom_filename (remove extension if present)
-            base_name = custom_filename.rsplit('.', 1)[0] if custom_filename else "Processed_Output"
-        
-        filename = base_name + f".{ext}"
+            # Remove any existing extension and re-add correct one
+            base_name = custom_filename.rsplit('.', 1)[0]
+            filename = f"{base_name}.{ext}"
+            
         output_path = os.path.join(output_dir, filename)
+
+        # Overwrite if exists (no unique names requirement)
+        if os.path.exists(output_path):
+             try:
+                 os.remove(output_path)
+             except Exception:
+                 pass
 
         if not self.formatted_headers:
             self._recover_formatted_headers()
@@ -227,9 +268,15 @@ class LogicEngine:
         query_cols = ', '.join([f'"{h}"' for h in self.formatted_headers])
 
         try:
-            self.cursor.execute(f"SELECT 1 FROM {self.formatted_table_name} LIMIT 1")
-            self.cursor.execute(f"SELECT {query_cols} FROM {self.formatted_table_name}")
-            formatted_rows = list(self.cursor.fetchall())
+            if customer_code:
+                print(f"DEBUG: Filtering data for CustomerCode: {customer_code}")
+                self.cursor.execute(f"SELECT {query_cols} FROM {self.formatted_table_name} WHERE \"CustomerCode\" = ?", (customer_code,))
+            else:
+                self.cursor.execute(f"SELECT {query_cols} FROM {self.formatted_table_name}")
+            
+            raw_rows = self.cursor.fetchall()
+            # Convert sqlite3.Row objects to regular lists
+            formatted_rows = [list(row) for row in raw_rows]
             formatted_headers = list(self.formatted_headers)
             print(f"DEBUG: generate_custom_output: fetched {len(formatted_rows)} rows from DB")
 
@@ -251,6 +298,23 @@ class LogicEngine:
                         new_row[i] = ' '.join(new_row[i].split()) # Remove double spaces
                 cleaned_rows.append(new_row)
             formatted_rows = cleaned_rows
+
+            # Merge Remark 1, 2, 3 into a single Remark column (11 cols -> 9 cols)
+            if len(formatted_headers) == 11 and formatted_headers[8] == "Remark 1":
+                new_headers = formatted_headers[:8] + ["Remark"]
+                new_rows = []
+                for r in formatted_rows:
+                    new_r = r[:8]
+                    # Combine columns 8, 9, 10, avoiding 'None' strings and empty values
+                    remarks = []
+                    for x in r[8:]:
+                        val = str(x).strip() if x is not None else ""
+                        if val and val.lower() != "none":
+                            remarks.append(val)
+                    new_r.append(", ".join(remarks))
+                    new_rows.append(new_r)
+                formatted_headers = new_headers
+                formatted_rows = new_rows
         except Exception as e:
             print(f"DEBUG: Exception fetching formatted data: {e}")
             formatted_headers = list(self.formatted_headers)

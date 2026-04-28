@@ -7,6 +7,11 @@ let pendingUpdates = {}; // Track changes: "rowId-colIdx": {row_id, col_index, v
 const FIXED_SCHEMA = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name",
     "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark 1", "Remark 2", "Remark 3"];
 
+const RESULT_SCHEMA = ["Sl. No", "Inv No", "Date", "Patient ID", "Patient Name",
+    "Invoice Balance", "Amt To Adjust", "CustomerCode", "Remark"];
+
+let resultData11 = null; // Store 11-column version for DB saving
+
 // Clean invoice number - remove /, -1, -2, etc suffixes that are not actual invoice numbers
 function cleanInvoiceNumber(invNo) {
     if (!invNo) return "";
@@ -245,23 +250,8 @@ function applyPipeline(stage = 'full', shouldSave = false) {
 
     if (stage === 'full' && document.getElementById('rule-consolidate').checked) {
         // Consolidate by Inv No (Index 1). 
-        // Remarks from multiple rows and columns are joined by comma.
         const selectedIndices = [1];
         pipelineRows = consolidateRows(pipelineRows, selectedIndices);
-    } else {
-        // If not consolidating rows, still concatenate multiple Remark columns per row
-        pipelineRows.forEach(row => {
-            let remarks = [];
-            if (row[8]) remarks.push(row[8]);  // Remark 1
-            if (row[9]) remarks.push(row[9]);  // Remark 2
-            if (row[10]) remarks.push(row[10]); // Remark 3
-            
-            if (remarks.length > 0) {
-                row[8] = [...new Set(remarks)].join(', ');
-                row[9] = ""; 
-                row[10] = "";
-            }
-        });
     }
 
     // 3. Apply Prefix Rules (Always apply if rules exist)
@@ -338,8 +328,44 @@ function applyPipeline(stage = 'full', shouldSave = false) {
     // 3.6 Filter Empty Rows
     pipelineRows = pipelineRows.filter(r => r[1] && r[1].toString().trim() !== "");
 
-    // Render to RESULT TABLE
-    renderTable('result-preview-table', FIXED_SCHEMA, pipelineRows, false, []);
+    // Store 11-column version (with rules applied) for export
+    resultData11 = {
+        headers: FIXED_SCHEMA,
+        rows: JSON.parse(JSON.stringify(pipelineRows))
+    };
+
+    // 3.7 Transform to 9 columns for Result Table UI (Merge Remarks)
+    const newRows = [];
+    const newRows11 = [];
+    pipelineRows.map(row => {
+        const newRow = row.slice(0, 8); // Sl. No to CustomerCode
+        const r1 = (row[8] || "").toString().trim();
+        const r2 = (row[9] || "").toString().trim();
+        const r3 = (row[10] || "").toString().trim();
+        
+        let remarks = [];
+        if (r1 && r1.toLowerCase() !== "none") remarks.push(r1);
+        if (r2 && r2.toLowerCase() !== "none") remarks.push(r2);
+        if (r3 && r3.toLowerCase() !== "none") remarks.push(r3);
+        
+        newRow[8] = remarks.join(', ');
+        newRows.push(newRow);
+        
+        // 11-column data for backend
+        let newRow11 = [...row];
+        newRow11[8] = newRow[8]; 
+        newRows11.push(newRow11);
+    });
+
+    resultData = {
+        headers: RESULT_SCHEMA,
+        rows: newRows
+    };
+    
+    resultData11.rows = newRows11;
+
+    // Render to RESULT TABLE (Strictly 9 columns)
+    renderTable('result-preview-table', RESULT_SCHEMA, newRows, false, []);
 
     // Auto-Open Split Section
     toggleSidebarSection('side-split-section');
@@ -1217,15 +1243,16 @@ function consolidateRows(rows, keyIndices = [1]) {
         row[balIdx] = row[balIdx].toFixed(2);
         row[amtIdx] = row[amtIdx].toFixed(2);
         
-        // Final Remarks: Unique values joined by comma - put in Remark 1, clear 2 & 3
+        // Final Remarks: If we have pooled remarks, join them but ideally keep 3 columns if possible?
+        // For simplicity during consolidation, we join unique remarks into Remark 1.
         if (row._remarkPool) {
-            row[8] = [...new Set(row._remarkPool)].join(', ');
-            row[9] = "";
-            row[10] = "";
+            const uniqueRemarks = [...new Set(row._remarkPool)];
+            row[8] = uniqueRemarks.slice(0, 1).join('');
+            row[9] = uniqueRemarks.slice(1, 2).join('');
+            row[10] = uniqueRemarks.slice(2).join(', '); // Overflow into Remark 3
             delete row._remarkPool;
         }
         
-        // Trim to 9 columns for Result Data output (Remarks only, not 3 columns)
         result.push(row);
     });
 
@@ -1404,7 +1431,7 @@ async function saveFullData(rows) {
 
 async function loadFormattedPreview() {
     try {
-        const res = await fetch('/api/get_preview');
+        const res = await fetch('/api/get_formatted_preview');
         const data = await res.json();
         if (data.rows) {
             originalFormattedData = data;
@@ -1614,7 +1641,7 @@ async function runProcess() {
 
         if (data.files) {
             data.files.forEach(f => {
-                consoleLog.innerHTML += `<p style='color:cyan'>> Generated: <a href="/download_file/${f}" target="_blank" style="color: #6366F1; text-decoration: underline;">${f}</a></p>`;
+                consoleLog.innerHTML += `<p style='color:cyan'>> Generated: <a href="/download_file/${f}" style="color: #6366F1; text-decoration: underline;">${f}</a></p>`;
             });
         }
 
@@ -1647,8 +1674,8 @@ async function prepareFile() {
         preparedFiles = [];
         preparedFilename = null;
 
-        // Determine Data to work with
-        let dataToSave = resultData ? resultData.rows : (mappedData ? mappedData.rows : (originalFormattedData ? originalFormattedData.rows : null));
+        // Determine Data to work with (Always use 11-column version for saving to DB)
+        let dataToSave = resultData11 ? resultData11.rows : (mappedData ? mappedData.rows : (originalFormattedData ? originalFormattedData.rows : null));
 
         if (splitGroups && Object.keys(splitGroups).length > 0) {
             // MULTI FILE EXPORT
@@ -1717,7 +1744,15 @@ async function prepareFile() {
                     const btn = document.createElement('button');
                     btn.innerText = pf.label;
                     btn.className = "download-link-btn";
-                    btn.onclick = () => window.location.href = `/download_file/${pf.name}`;
+                    btn.onclick = () => {
+                        const link = document.createElement('a');
+                        const timestamp = new Date().getTime();
+                        link.href = `/download_file/${pf.name}?t=${timestamp}`;
+                        link.setAttribute('download', pf.name);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
                     Object.assign(btn.style, {
                         width: "100%", padding: "8px", background: "#10B981",
                         color: "white", border: "none", borderRadius: "4px",
@@ -1780,7 +1815,13 @@ async function prepareFile() {
 
 function executeDownload() {
     if (preparedFilename) {
-        window.location.href = `/download_file/${preparedFilename}`;
+        const link = document.createElement('a');
+        const timestamp = new Date().getTime();
+        link.href = `/download_file/${preparedFilename}?t=${timestamp}`;
+        link.setAttribute('download', preparedFilename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         updateStatus("Download Started.");
     }
 }
