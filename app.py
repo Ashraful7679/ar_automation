@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, redirect, url_for, session
 import os
 import shutil
 import time
@@ -10,8 +10,8 @@ import sys
 from flask_login import LoginManager, login_required, current_user
 from models import db, User, FileHistory
 from auth_routes import auth_bp
-
-app = Flask(__name__)
+from super_admin_routes import super_admin_bp
+from licensing_utils import LicenseManager, HardwareID
 
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
@@ -45,9 +45,59 @@ login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, user_id)
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(super_admin_bp)
+
+# --- SUBSCRIPTION MIDDLEWARE ---
+@app.before_request
+def check_subscription():
+    # Allow access to static, super-admin, and auth routes
+    if request.path.startswith('/static') or \
+       request.path.startswith('/super-admin') or \
+       request.path.startswith('/login') or \
+       request.path.startswith('/logout') or \
+       request.path.startswith('/subscription-status') or \
+       not current_user.is_authenticated:
+        return
+
+    # Super admin doesn't have quotas
+    if session.get('is_super_admin'):
+        return
+
+    # Reset daily quota if it's a new day
+    if current_user.reset_daily_quota():
+        db.session.commit()
+    reason = None
+    if current_user.expiry_date and datetime.now() > current_user.expiry_date:
+        reason = "Account Expired"
+    elif current_user.total_quota != -1 and current_user.used_quota >= current_user.total_quota:
+        reason = "Total Quota Reached"
+    elif current_user.daily_quota != -1 and current_user.used_today >= current_user.daily_quota:
+        reason = "Daily Quota Reached"
+
+    if reason:
+        if request.path.startswith('/api/'):
+            return jsonify({"error": f"Subscription Blocked: {reason}"}), 403
+        return render_template('subscription_expired.html', reason=reason)
+
+@app.route('/subscription-status')
+@login_required
+def subscription_status():
+    current_user.reset_daily_quota()
+    db.session.commit()
+    
+    return jsonify({
+        "expiry_date": current_user.expiry_date.strftime("%Y-%m-%d") if current_user.expiry_date else "Permanent",
+        "days_left": (current_user.expiry_date - datetime.now()).days if current_user.expiry_date else 9999,
+        "total_quota": current_user.total_quota,
+        "used_quota": current_user.used_quota,
+        "daily_quota": current_user.daily_quota,
+        "used_today": current_user.used_today,
+        "remaining_total": (current_user.total_quota - current_user.used_quota) if current_user.total_quota != -1 else 9999,
+        "remaining_today": (current_user.daily_quota - current_user.used_today) if current_user.daily_quota != -1 else 9999
+    })
 
 # Create DB and Default Admin
 with app.app_context():
@@ -190,10 +240,21 @@ def upload():
         engine = LogicEngine(DB_PATH)
         engine.load_file(filepath, profile_name=profile, sheet_name=sheet_name)
         
+        # Cleanup uploaded file immediately after loading to DB
+        try:
+            os.remove(filepath)
+        except:
+            pass
+            
         # Get both previews
         raw_preview = engine.get_preview()
         formatted_preview = engine.get_formatted_preview()
         engine.close()
+        
+        # Update Quotas
+        current_user.used_quota += 1
+        current_user.used_today += 1
+        db.session.commit()
         
         return jsonify({
             "message": "File loaded successfully", 
@@ -208,12 +269,12 @@ def upload():
         error_details = traceback.format_exc()
         return jsonify({"error": f"Upload Failed: {str(e)}", "details": error_details}), 500
 
-def save_history(input_file, output_file):
+def save_history(input_file, output_file, user_id=None):
     try:
         if not input_file or not output_file: return
         
         # Save to DB
-        hist = FileHistory(input_filename=input_file, output_filename=output_file)
+        hist = FileHistory(input_filename=input_file, output_filename=output_file, user_id=user_id)
         db.session.add(hist)
         db.session.commit()
         
@@ -241,7 +302,7 @@ def run_process():
         
         input_filename = "Input_File.xlsx" # Placeholder
         if files:
-            save_history(input_filename, files[0])
+            save_history(input_filename, files[0], user_id=current_user.id)
             
         engine.close()
         
@@ -262,7 +323,7 @@ def export_custom():
         filename = engine.generate_custom_output(profile, custom_filename, file_format)
         engine.close()
         
-        save_history("Uploaded_File.xlsx", filename)
+        save_history("Uploaded_File.xlsx", filename, user_id=current_user.id)
         
         return jsonify({'message': 'Export generated', 'file': filename})
     except Exception as e:

@@ -2249,4 +2249,45 @@ function applyRulesTemplate(rules) {
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchTemplates();
+    checkSubscriptionStatus();
+    setInterval(checkSubscriptionStatus, 60000); // Check every minute
 });
+
+// Subscription Status Polling
+async function checkSubscriptionStatus() {
+    try {
+        const res = await fetch("/subscription-status");
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const notifBar = document.getElementById("subscription-notif");
+        const msgSpan = document.getElementById("notif-message");
+        if (!notifBar || !msgSpan) return;
+        
+        let messages = [];
+        
+        // 1. Check Expiry (within 7 days)
+        if (data.days_left !== null && data.days_left <= 7) {
+            messages.push(`⚠️ Subscription expires in ${data.days_left} days (${data.expiry_date})`);
+        }
+        
+        // 2. Check Daily Quota (<= 10 left)
+        if (data.remaining_today <= 10) {
+            messages.push(`⚡ Low Daily Quota: ${data.remaining_today} files remaining for today`);
+        }
+        
+        // 3. Check Total Quota (<= 100 left)
+        if (data.remaining_total <= 100) {
+            messages.push(`📉 Low Total Quota: ${data.remaining_total} files remaining in total`);
+        }
+        
+        if (messages.length > 0) {
+            msgSpan.innerText = messages.join(" | ");
+            notifBar.style.display = "block";
+        } else {
+            notifBar.style.display = "none";
+        }
+    } catch (err) {
+        console.error("Failed to fetch subscription status:", err);
+    }
+}

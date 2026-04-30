@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activate License - AR Automation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { width: 100%; max-width: 500px; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: none; }
+        .hwid { background: #e9ecef; padding: 0.5rem; border-radius: 5px; font-family: monospace; font-weight: bold; margin-bottom: 1.5rem; display: block; width: 100%; text-align: center; }
+        .btn-primary { background-color: #0d6efd; border: none; padding: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="text-center mb-4">
+            <h3>License Required</h3>
+            <p class="text-muted">This machine is not activated. Please provide your Machine ID to the administrator to receive your license key.</p>
+        </div>
+        
+        <label class="form-label text-muted">Machine ID</label>
+        <div class="hwid">{{ hwid }}</div>
+
+        <form method="POST" action="/activate">
+            <div class="mb-3">
+                <label class="form-label">Activation Key</label>
+                <input type="text" name="license_key" class="form-control form-control-lg" placeholder="HWID|YYYY-MM-DD|XXXXXX" required>
+            </div>
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary w-100">Activate Now</button>
+        </form>
+        <div class="text-center mt-3">
+            <small class="text-muted">Offline Activation System v2.0</small>
+        </div>
+    </div>
+</body>
+</html>

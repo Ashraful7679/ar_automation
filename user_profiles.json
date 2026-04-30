@@ -1,16 +1,6 @@
 {
     "_TEMPLATES_": {
         "mapping": {
-            "AMERICAN LIFE INSURANCE": {
-                "1": "Invoice No.",
-                "2": "Inv. Date",
-                "4": "Patient Name",
-                "5": "Paid",
-                "6": "Paid",
-                "8": "Remarks -1",
-                "9": "Remarks -2",
-                "10": "Remarks -3"
-            },
             "AXA PPP 020": {
                 "1": "Your Invoice Number",
                 "2": "Global Date",
@@ -45,28 +35,12 @@
                 "8": "PRIMARY_REASON",
                 "9": "SECONDARY_REASON"
             },
-            "Bupa_FInal": {
-                "1": "INVOICE_NO",
-                "2": "TREATMENT_TO_DATE",
-                "6": "AMOUNT_PAID",
-                "8": "Remark 1",
-                "9": "Remark 2",
-                "10": "Remark 3"
-            },
             "Cigna 020": {
                 "1": "Invoice Ref.",
                 "2": "Invoice Date",
                 "4": "Patient Name",
                 "6": "Payment in billed currency",
                 "8": "Payment Detail"
-            },
-            "GEM": {
-                "1": "Invoice No",
-                "2": "Date Of Treatement",
-                "3": "Member No.",
-                "4": "Member Name",
-                "6": "Net Payment",
-                "8": "Bank charge to Client"
             },
             "GIG Gulf 020": {
                 "1": "Provider Invoice Number",
@@ -75,10 +49,34 @@
                 "8": "Denial/Rejection reason",
                 "9": "External Comments"
             },
+            "Gems 020": {
+                "1": "Invoice No",
+                "2": "Date Of Treatement",
+                "6": "Net Payment",
+                "8": "Bank charge to Client",
+                "9": "Remark 2",
+                "10": "Remark 3"
+            },
             "Globemed 020": {
                 "1": "INVOICENUMBER",
                 "6": "PROVIDERNET DETAILS",
                 "8": "REMARK"
+            },
+            "Healix 020": {
+                "1": "Ref",
+                "2": "Date",
+                "6": "Remitted",
+                "8": "Remark 1",
+                "9": "Remark 2",
+                "10": "Remark 3"
+            },
+            "Health-360 020": {
+                "1": "Invoice No",
+                "2": "Treatment Date",
+                "6": "Net Paid",
+                "8": "Remarks",
+                "9": "Remark 2",
+                "10": "Remark 3"
             },
             "MSH 020": {
                 "1": "Invoice No",
@@ -95,15 +93,6 @@
                 "6": "Paid Amount",
                 "8": "Invoice Notes"
             },
-            "MetlifeAlico001": {
-                "1": "Invoice No.",
-                "2": "Cheq. Date",
-                "4": "Patient Name",
-                "6": "Paid",
-                "8": "Remarks -1",
-                "9": "Remarks -2",
-                "10": "Remarks -3"
-            },
             "NAS 020": {
                 "1": "InvoiceNo",
                 "2": "ChequeDate",
@@ -116,6 +105,14 @@
                 "2": "Date",
                 "6": "Settled Amount",
                 "8": "Remark"
+            },
+            "Qatar Insurance 020": {
+                "1": "Invoice No.",
+                "2": "Invoice Date",
+                "6": "Net Amt. LC",
+                "8": "Reject Reason",
+                "9": "Appr. Remarks",
+                "10": "Remark 3"
             },
             "Saico 020": {
                 "1": "INVOICE NO.",
@@ -131,34 +128,16 @@
                 "6": "NET_PAID",
                 "8": "NON_PAY_REASON_DESC"
             },
-            "H360": {
-                "1": "Invoice No",
-                "2": "Treatment Date",
-                "3": "CPR",
-                "4": "Member Name",
-                "5": "Gross Amount",
-                "6": "Net Paid",
-                "8": "Remarks"
+            "Gulf Union Cooperative -(KSA) 020": {
+                "1": "Invoice Numbers",
+                "2": "Cheque Dispatch Date",
+                "6": "Paid Amount",
+                "8": "Reason Denial Description",
+                "9": "Remark 2",
+                "10": "Remark 3"
             }
         },
         "rules": {
-            "AMERICAN LIFE INSURANCE": [
-                {
-                    "c": "100",
-                    "p": "A",
-                    "s": "ALICO"
-                },
-                {
-                    "c": "101",
-                    "p": "B",
-                    "s": "ALICO"
-                },
-                {
-                    "c": "102",
-                    "p": "C",
-                    "s": "ALICO"
-                }
-            ],
             "AXA PPP code 020": [
                 {
                     "c": "AXAPP100",
@@ -189,6 +168,23 @@
                 },
                 {
                     "c": "ALLIA102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "American Life Insurance code 020": [
+                {
+                    "c": "ALICO100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "ALICO101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "ALICO102",
                     "p": "C",
                     "s": ""
                 }
@@ -261,7 +257,7 @@
                     "s": ""
                 }
             ],
-            "Gem code 020": [
+            "Gems code 020": [
                 {
                     "c": "GUNIO100",
                     "p": "A",
@@ -291,6 +287,57 @@
                 },
                 {
                     "c": "ARIGI102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Gulf Union Cooperative (KSA) code 020": [
+                {
+                    "c": "GUCIC100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "GUCIC101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "GUCIC102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Healix code 020": [
+                {
+                    "c": "HEALI100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "HEALI101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "HEALI102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
+            "Health-360 code 020": [
+                {
+                    "c": "HEALT100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "HEALT101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "HEALT102",
                     "p": "C",
                     "s": ""
                 }
@@ -363,6 +410,23 @@
                     "s": ""
                 }
             ],
+            "Qatar Insurance code 020": [
+                {
+                    "c": "QICIN100",
+                    "p": "A",
+                    "s": ""
+                },
+                {
+                    "c": "QICIN101",
+                    "p": "B",
+                    "s": ""
+                },
+                {
+                    "c": "QICIN102",
+                    "p": "C",
+                    "s": ""
+                }
+            ],
             "Saico code 020": [
                 {
                     "c": "SAICO100",
@@ -397,21 +461,26 @@
                     "s": ""
                 }
             ],
-            "American Life Insurance code 020": [
+            "Health-360 testing code": [
                 {
-                    "p": "A",
+                    "p": "AOP",
                     "s": "",
-                    "c": "ALICO100"
+                    "c": "HEALT100"
                 },
                 {
-                    "p": "B",
+                    "p": "AOP",
                     "s": "",
-                    "c": "ALICO101"
+                    "c": "HEALT101"
                 },
                 {
-                    "p": "C",
+                    "p": "AIP",
                     "s": "",
-                    "c": "ALICO102"
+                    "c": "HEALT100"
+                },
+                {
+                    "p": "AIP",
+                    "s": "",
+                    "c": "HEALT101"
                 }
             ]
         }

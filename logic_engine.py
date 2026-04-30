@@ -403,11 +403,20 @@ class LogicEngine:
                         # Write data starting from A6 (Row Index 5)
                         import xlwt
                         num_style = xlwt.easyxf(num_format_str='0.000')
+                        date_style = xlwt.easyxf(num_format_str='dd/mm/yyyy')
+                        
+                        date_idx = -1
+                        if "Date" in formatted_headers:
+                            date_idx = formatted_headers.index("Date")
+
                         for r_idx, row_data in enumerate(rows_to_write):
                             for c_idx, val in enumerate(row_data):
                                 if c_idx < 9: # Only A-I (9 columns)
                                     if c_idx in [5, 6]:
                                         ws.write(r_idx + 5, c_idx, val, num_style)
+                                    elif date_idx >= 0 and c_idx == date_idx:
+                                        # Format found date column
+                                        ws.write(r_idx + 5, c_idx, val, date_style)
                                     else:
                                         ws.write(r_idx + 5, c_idx, val)
                         wb.save(output_path)
@@ -433,17 +442,32 @@ class LogicEngine:
             try:
                 print(f"DEBUG: generate_custom_output: Creating DataFrame with {len(formatted_rows)} rows")
                 df = pd.DataFrame(formatted_rows, columns=formatted_headers)
-                # Convert Invoice Balance and Amt To Adjust to numbers (indices 5 and 6)
+                # Convert numeric and date columns
                 for i in [5, 6]:
-                    col_name = formatted_headers[i]
-                    df[col_name] = pd.to_numeric(df[col_name].astype(str).str.replace(',', '').str.strip(), errors='coerce')
+                    if i < len(formatted_headers):
+                        col_name = formatted_headers[i]
+                        df[col_name] = pd.to_numeric(df[col_name].astype(str).str.replace(',', '').str.strip(), errors='coerce')
+                
+                date_idx = -1
+                if "Date" in formatted_headers:
+                    date_idx = formatted_headers.index("Date")
+                    df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
 
                 # Write to Excel
                 with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                     df.to_excel(writer, index=False, startrow=4, sheet_name='Data')
                     
-                    # Apply numeric formatting to columns F and G
+                    # Apply formatting
                     ws = writer.sheets['Data']
+                    # Date Column (Excel uses 1-based indexing, so date_idx + 1)
+                    if date_idx >= 0:
+                        xl_col = date_idx + 1
+                        for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=xl_col, max_col=xl_col):
+                            for cell in row:
+                                if cell.value is not None:
+                                    cell.number_format = 'dd/mm/yyyy'
+                    
+                    # Columns F-G (Numeric) - usually index 6 and 7 in Excel (1-based)
                     for row in ws.iter_rows(min_row=6, max_row=ws.max_row, min_col=6, max_col=7):
                         for cell in row:
                             if cell.value is not None:

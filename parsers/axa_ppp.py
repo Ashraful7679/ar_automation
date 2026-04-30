@@ -27,8 +27,8 @@ class AxaPppParser(BaseParser):
             r'^(?P<patient>.+?)\s+'
             r'(?P<inv_no>[A-Z0-9-]+(?:-[A-Z]+)*)\s+'
             r'(?P<our_inv>\d+)\s+'
-            r'(?P<amt_inv>[A-Z]{3}\s+[\d\.]+)\s+'
-            r'(?P<amt_paid>[A-Z]{3}\s+[\d\.]+)'
+            r'(?P<amt_inv>[A-Z]{3}\s+[\d,\.]+)\s+'
+            r'(?P<amt_paid>[A-Z]{3}\s+[\d,\.]+)'
             r'(?:\s+(?P<note>.*))?$'
         )
 

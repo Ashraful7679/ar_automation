@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Dashboard - AR Automation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar { height: 100vh; background: #212529; color: white; padding-top: 20px; }
+        .main-content { padding: 30px; }
+        .card { border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .nav-link { color: rgba(255,255,255,0.7); }
+        .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2 sidebar">
+                <h4 class="text-center mb-4 text-info">Super Admin</h4>
+                <hr class="mx-3">
+                <div class="nav flex-column nav-pills px-3">
+                    <a class="nav-link active" href="#">Admin Management</a>
+                    <a class="nav-link mt-2" href="/super-admin/logout">Logout</a>
+                </div>
+            </div>
+            <div class="col-md-10 main-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Admin Account Management</h2>
+                </div>
+
+                <div class="row">
+                    <!-- Admin Creation -->
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white fw-bold">Create New Admin</div>
+                            <div class="card-body">
+                                <form id="adminForm">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Username</label>
+                                        <input type="text" id="admin_user" class="form-control" placeholder="e.g. branch_manager" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Password</label>
+                                        <input type="password" id="admin_pass" class="form-control" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label small fw-bold mb-0">Max Sub-Users</label>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="unlimited_users_create" onchange="toggleUnlimited('max_users', this.checked)">
+                                                <label class="form-check-label small" for="unlimited_users_create">Unlimited</label>
+                                            </div>
+                                        </div>
+                                        <input type="number" id="max_users" class="form-control" value="10" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label small fw-bold mb-0">Account Expiry</label>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="perm_access_create" onchange="toggleDateInput('expiry_date', this.checked)">
+                                                <label class="form-check-label small" for="perm_access_create">Permanent</label>
+                                            </div>
+                                        </div>
+                                        <input type="date" id="expiry_date" class="form-control">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100 fw-bold">Create Admin Account</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin List -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white fw-bold">Active Administrators</div>
+                            <div class="card-body p-0">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>User Limit</th>
+                                            <th>Expires On</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for admin in admins %}
+                                        <tr>
+                                            <td class="align-middle">
+                                                <strong>{{ admin.username }}</strong>
+                                            </td>
+                                            <td class="align-middle">
+                                                {% if admin.max_sub_users == -1 %}
+                                                    <span class="badge bg-success">Unlimited</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ admin.max_sub_users }} Users</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="align-middle">
+                                                {% if admin.expiry_date %}
+                                                    <span class="{% if admin.expiry_date < datetime.now() %}text-danger fw-bold{% endif %}">
+                                                        {{ admin.expiry_date.strftime('%Y-%m-%d') }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-success fw-bold">Permanent</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="align-middle">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="openEditModal({{ admin.id }}, '{{ admin.username }}', {{ admin.max_sub_users }}, '{{ admin.expiry_date.strftime('%Y-%m-%d') if admin.expiry_date else '' }}')">Edit</button>
+                                                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteAdmin({{ admin.id }})">Delete</button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Admin Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">Edit Admin: <span id="modalAdminName"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit_admin_id">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">New Password</label>
+                        <input type="password" id="edit_admin_pass" class="form-control" placeholder="Leave blank to keep current">
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold mb-0">Max Sub-Users</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="edit_unlimited_users" onchange="toggleUnlimited('edit_max_users', this.checked)">
+                                <label class="form-check-label small" for="edit_unlimited_users">Unlimited</label>
+                            </div>
+                        </div>
+                        <input type="number" id="edit_max_users" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold mb-0">Account Expiry</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="edit_perm_access" onchange="toggleDateInput('edit_expiry_date', this.checked)">
+                                <label class="form-check-label small" for="edit_perm_access">Permanent</label>
+                            </div>
+                        </div>
+                        <input type="date" id="edit_expiry_date" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAdminEdit()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleDateInput(id, isPermanent) {
+            const input = document.getElementById(id);
+            if (isPermanent) {
+                input.value = '';
+                input.disabled = true;
+            } else {
+                input.disabled = false;
+            }
+        }
+
+        function toggleUnlimited(id, isUnlimited) {
+            const input = document.getElementById(id);
+            if (isUnlimited) {
+                input.value = '-1';
+                input.disabled = true;
+                input.style.opacity = '0.5';
+            } else {
+                if (input.value === '-1') input.value = '10';
+                input.disabled = false;
+                input.style.opacity = '1';
+            }
+        }
+
+        document.getElementById('adminForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const isPerm = document.getElementById('perm_access_create').checked;
+            const isUnlimited = document.getElementById('unlimited_users_create').checked;
+            const payload = {
+                username: document.getElementById('admin_user').value,
+                password: document.getElementById('admin_pass').value,
+                max_users: isUnlimited ? -1 : document.getElementById('max_users').value,
+                expiry_date: isPerm ? null : document.getElementById('expiry_date').value
+            };
+
+            const res = await fetch('/super-admin/create-admin', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload) 
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        };
+
+        let bootstrapEditModal;
+        document.addEventListener('DOMContentLoaded', () => {
+            bootstrapEditModal = new bootstrap.Modal(document.getElementById('editModal'));
+        });
+
+        function openEditModal(id, username, maxUsers, expiry) {
+            document.getElementById('edit_admin_id').value = id;
+            document.getElementById('modalAdminName').innerText = username;
+            
+            const maxInput = document.getElementById('edit_max_users');
+            const unlimSwitch = document.getElementById('edit_unlimited_users');
+            if (maxUsers === -1) {
+                maxInput.value = '-1';
+                maxInput.disabled = true;
+                unlimSwitch.checked = true;
+            } else {
+                maxInput.value = maxUsers;
+                maxInput.disabled = false;
+                unlimSwitch.checked = false;
+            }
+
+            document.getElementById('edit_admin_pass').value = '';
+            
+            const expiryInput = document.getElementById('edit_expiry_date');
+            const permSwitch = document.getElementById('edit_perm_access');
+            
+            if (expiry) {
+                expiryInput.value = expiry;
+                expiryInput.disabled = false;
+                permSwitch.checked = false;
+            } else {
+                expiryInput.value = '';
+                expiryInput.disabled = true;
+                permSwitch.checked = true;
+            }
+            
+            bootstrapEditModal.show();
+        }
+
+        async function saveAdminEdit() {
+            const id = document.getElementById('edit_admin_id').value;
+            const password = document.getElementById('edit_admin_pass').value;
+            const isUnlimited = document.getElementById('edit_unlimited_users').checked;
+            const maxUsers = document.getElementById('edit_max_users').value;
+            const isPerm = document.getElementById('edit_perm_access').checked;
+            const expiry = document.getElementById('edit_expiry_date').value;
+
+            const payload = { 
+                id, 
+                max_users: isUnlimited ? -1 : maxUsers, 
+                expiry_date: isPerm ? null : expiry 
+            };
+            if (password) payload.password = password;
+
+            const res = await fetch('/super-admin/edit-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function deleteAdmin(id) {
+            if (!confirm("Are you sure you want to delete this admin account and all associated users?")) return;
+            const res = await fetch('/super-admin/delete-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (data.success) location.reload();
+            else alert(data.error);
+        }
+    </script>
+</body>
+</html>
